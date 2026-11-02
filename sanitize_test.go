@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSanitizeHTML(t *testing.T) {
@@ -87,4 +88,30 @@ func TestEscapeLike(t *testing.T) {
 	if got := escapeLike(`50%_off[x]\`); got != `50\%\_off\[x]\\` {
 		t.Errorf("got %q", got)
 	}
+}
+
+func TestCatalogLocalNowOffset(t *testing.T) {
+	diff := func(env string) float64 {
+		t.Setenv("CATALOG_UTC_OFFSET_HOURS", env)
+		return catalogLocalNow().Sub(time.Now().UTC()).Hours()
+	}
+	round := func(h float64) int { return int(h + 0.5*sign(h)) }
+	if got := round(diff("")); got != -5 {
+		t.Errorf("default offset: %d", got)
+	}
+	if got := round(diff("2")); got != 2 {
+		t.Errorf("offset 2: %d", got)
+	}
+	for _, bad := range []string{"abc", "99", "-99"} {
+		if got := round(diff(bad)); got != -5 {
+			t.Errorf("invalid %q must fall back to -5, got %d", bad, got)
+		}
+	}
+}
+
+func sign(h float64) float64 {
+	if h < 0 {
+		return -1
+	}
+	return 1
 }

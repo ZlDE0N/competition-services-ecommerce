@@ -58,7 +58,7 @@ var (
 func init() {
 	// Prompt general por defecto
 	promptStore = PromptConfig{
-		GeneralPrompt: `Eres un experto en información de productos para el mercado de Panamá y Centroamérica.
+		GeneralPrompt: `Eres un experto en información de productos para el mercado hispanohablante de Latinoamérica.
 Al generar contenido para fichas de productos, debes:
 - Usar español neutro y profesional
 - Respetar el tono comercial de las marcas
