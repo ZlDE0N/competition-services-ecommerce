@@ -367,13 +367,10 @@ func approveEnrichmentQueueItem(c *gin.Context) {
 	}
 	id := c.Param("id")
 
-	var req ApproveRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		req.ReviewedBy = ""
-	}
-	reviewedBy := strings.TrimSpace(req.ReviewedBy)
+	// Identity comes from the trusted caller's header, never from the body.
+	reviewedBy := actorEmail(c)
 
-	// Server-side role check — X-User-Email alone is not trusted
+	// Server-side role check against the database
 	if !hasQueueApprovalRole(reviewedBy) {
 		handleError(c, http.StatusForbidden, "FORBIDDEN", "Se requiere rol Products Admin o Super Admin", "")
 		return
@@ -443,9 +440,9 @@ func approveEnrichmentQueueItem(c *gin.Context) {
 			LastModifiedDate = @p5
 		WHERE CAST(ProductId AS NVARCHAR(36)) = @p1
 	`, item.ProductId,
-		enriched.EnhancedData.Name,
-		enriched.EnhancedData.ShortDescription,
-		enriched.EnhancedData.FullDescription,
+		stripHTML(enriched.EnhancedData.Name),
+		sanitizeHTML(enriched.EnhancedData.ShortDescription),
+		sanitizeHTML(enriched.EnhancedData.FullDescription),
 		panamaNow,
 	)
 	if err != nil {
@@ -491,7 +488,8 @@ func rejectEnrichmentQueueItem(c *gin.Context) {
 		return
 	}
 
-	// Server-side role check
+	// Identity comes from the trusted caller's header, never from the body.
+	req.ReviewedBy = actorEmail(c)
 	if !hasQueueApprovalRole(req.ReviewedBy) {
 		handleError(c, http.StatusForbidden, "FORBIDDEN", "Se requiere rol Products Admin o Super Admin", "")
 		return
@@ -576,7 +574,12 @@ func editEnrichmentQueueItem(c *gin.Context) {
 		return
 	}
 
-	editedStr := string(req.EditedData)
+	cleaned, cleanErr := sanitizeJSONStrings(req.EditedData)
+	if cleanErr != nil {
+		handleError(c, http.StatusBadRequest, "INVALID_EDITED_DATA", "Datos editados inválidos", cleanErr.Error())
+		return
+	}
+	editedStr := string(cleaned)
 	result, err := db.Exec(`
 		UPDATE catalog.tblPIMEnrichmentQueue
 		SET EditedData = @p2

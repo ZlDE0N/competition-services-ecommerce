@@ -322,6 +322,11 @@ func updateGeneralPrompt(c *gin.Context) {
 		return
 	}
 
+	if len(body.Prompt) > maxPromptChars {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": fmt.Sprintf("prompt supera %d caracteres", maxPromptChars)})
+		return
+	}
+
 	promptStoreMu.Lock()
 	promptStore.GeneralPrompt = strings.TrimSpace(body.Prompt)
 	promptStore.UpdatedAt = time.Now()
@@ -344,6 +349,10 @@ func createTaxonomyPrompt(c *gin.Context) {
 		return
 	}
 
+	if msg := validatePromptSize(tp); msg != "" {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": msg})
+		return
+	}
 	if tp.Department == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "department es requerido"})
 		return
@@ -377,6 +386,11 @@ func updateTaxonomyPrompt(c *gin.Context) {
 	var update TaxonomyPrompt
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if msg := validatePromptSize(update); msg != "" {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": msg})
 		return
 	}
 
@@ -610,4 +624,27 @@ func getTaxonomyOptions(c *gin.Context) {
 		"categories":    categories,
 		"subcategories": subcategories,
 	})
+}
+
+// Size limits for prompt text a caller can store (it is sent to the model).
+const (
+	maxPromptChars = 20000
+	maxFieldChars  = 500
+	maxListItems   = 50
+)
+
+// validatePromptSize returns a message when a taxonomy prompt exceeds the limits.
+func validatePromptSize(tp TaxonomyPrompt) string {
+	if len(tp.Prompt) > maxPromptChars {
+		return fmt.Sprintf("prompt supera %d caracteres", maxPromptChars)
+	}
+	for _, f := range []string{tp.Department, tp.Category, tp.SubCategory, tp.Tone, tp.Format, tp.ShortDescGuide} {
+		if len(f) > maxFieldChars {
+			return fmt.Sprintf("un campo supera %d caracteres", maxFieldChars)
+		}
+	}
+	if len(tp.KeyAttributes) > maxListItems {
+		return fmt.Sprintf("keyAttributes admite como máximo %d elementos", maxListItems)
+	}
+	return ""
 }

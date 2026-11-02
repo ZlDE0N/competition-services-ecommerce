@@ -257,11 +257,9 @@ func readPDFFromURLWithClaude(pdfURL string) (*PDFReadResult, error) {
 	log.Printf("📥 Descargando PDF para Claude: %s", truncateURL(pdfURL))
 
 	// Descargar PDF
-	client := &http.Client{
-		Timeout: 60 * time.Second,
-	}
+	client := newSafeHTTPClient(60 * time.Second)
 
-	resp, err := client.Get(pdfURL)
+	resp, err := safeGet(client, pdfURL)
 	if err != nil {
 		return nil, fmt.Errorf("error descargando PDF: %v", err)
 	}
@@ -278,7 +276,7 @@ func readPDFFromURLWithClaude(pdfURL string) (*PDFReadResult, error) {
 	}
 
 	// Leer contenido
-	pdfData, err := io.ReadAll(resp.Body)
+	pdfData, err := readLimited(resp.Body, maxDocDownloadBytes)
 	if err != nil {
 		return nil, fmt.Errorf("error leyendo PDF: %v", err)
 	}

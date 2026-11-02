@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,7 +27,7 @@ type ImageTypeMapping struct {
 }
 
 // Mapeo por defecto - se actualizará con datos reales de la BD
-var imageTypeMappings = map[string]ImageTypeMapping{
+var imageTypeMappingsStore = map[string]ImageTypeMapping{
 	"principal": {
 		LocalType:       "principal",
 		MediaResourceID: "", // Se llenará dinámicamente
@@ -51,6 +52,26 @@ var imageTypeMappings = map[string]ImageTypeMapping{
 		FileNamePrefix:  "ENV",
 		MetadataTag:     "type:ambiente",
 	},
+}
+
+// imageTypeMappings is read by many handlers and replaced by an admin endpoint:
+// access goes through these helpers so the map is never read while it is written.
+var imageTypeMappingsMu sync.RWMutex
+
+func snapshotImageTypeMappings() map[string]ImageTypeMapping {
+	imageTypeMappingsMu.RLock()
+	defer imageTypeMappingsMu.RUnlock()
+	out := make(map[string]ImageTypeMapping, len(imageTypeMappingsStore))
+	for k, v := range imageTypeMappingsStore {
+		out[k] = v
+	}
+	return out
+}
+
+func setImageTypeMappings(m map[string]ImageTypeMapping) {
+	imageTypeMappingsMu.Lock()
+	imageTypeMappingsStore = m
+	imageTypeMappingsMu.Unlock()
 }
 
 func getAvailableMediaResources(c *gin.Context) {
@@ -116,7 +137,7 @@ func getAvailableMediaResources(c *gin.Context) {
 func updateImageTypeMappings(resources []MediaResource) map[string]ImageTypeMapping {
 	// Crear copia del mapeo actual
 	updatedMappings := make(map[string]ImageTypeMapping)
-	for k, v := range imageTypeMappings {
+	for k, v := range snapshotImageTypeMappings() {
 		updatedMappings[k] = v
 	}
 
@@ -181,7 +202,7 @@ func updateImageTypeMappings(resources []MediaResource) map[string]ImageTypeMapp
 	}
 
 	// Actualizar mapeos globales
-	imageTypeMappings = updatedMappings
+	setImageTypeMappings(updatedMappings)
 
 	// Log del estado final
 	log.Printf("Final mapping state:")
@@ -211,8 +232,8 @@ func getMappingStatus(mappings map[string]ImageTypeMapping) map[string]interface
 
 func getImageTypeMappings(c *gin.Context) {
 	c.JSON(200, gin.H{
-		"mappings":      imageTypeMappings,
-		"mappingStatus": getMappingStatus(imageTypeMappings),
+		"mappings":      snapshotImageTypeMappings(),
+		"mappingStatus": getMappingStatus(snapshotImageTypeMappings()),
 		"instructions": []string{
 			"1. Consulta /media-resources para ver recursos disponibles",
 			"2. Si no hay mapeos automáticos, usa /configure-mappings para configurar manualmente",
@@ -234,7 +255,7 @@ func configureImageTypeMappings(c *gin.Context) {
 
 	// Validar que los MediaResourceIDs existen
 	updatedMappings := make(map[string]ImageTypeMapping)
-	for k, v := range imageTypeMappings {
+	for k, v := range snapshotImageTypeMappings() {
 		updatedMappings[k] = v
 	}
 
@@ -275,37 +296,36 @@ func configureImageTypeMappings(c *gin.Context) {
 	}
 
 	// Actualizar mapeos globales
-	imageTypeMappings = updatedMappings
+	setImageTypeMappings(updatedMappings)
 
 	c.JSON(200, gin.H{
 		"message":         "Mappings updated successfully",
-		"updatedMappings": imageTypeMappings,
-		"mappingStatus":   getMappingStatus(imageTypeMappings),
+		"updatedMappings": snapshotImageTypeMappings(),
+		"mappingStatus":   getMappingStatus(snapshotImageTypeMappings()),
 	})
 }
 
+// validateMediaResourceExists checks the id against the catalog table.
 func validateMediaResourceExists(mediaResourceId string) bool {
-	// Para IDs con caracteres especiales, intentar validación por longitud/patrón
-	if len(mediaResourceId) < 10 {
+	if db == nil || strings.TrimSpace(mediaResourceId) == "" {
 		return false
 	}
-
-	// Si llegamos hasta aquí, probablemente es un ID válido encontrado por nombre
-	// La validación real será al hacer la inserción
-	log.Printf("Accepting MediaResourceId for validation: [length=%d chars]", len(mediaResourceId))
-	return true
+	var n int
+	err := db.QueryRow(`SELECT COUNT(*) FROM catalog.pltblMediaResource
+		WHERE CAST(MediaResourceId AS NVARCHAR(36)) = @p1 AND Status = '1'`, mediaResourceId).Scan(&n)
+	return err == nil && n > 0
 }
 
 func getMediaResourceForImageType(imageType string) (string, error) {
 	// Si no hay mapeos, intentar autoconfigurarlos
-	if len(imageTypeMappings) == 0 || imageTypeMappings["principal"].MediaResourceID == "" {
+	if len(snapshotImageTypeMappings()) == 0 || snapshotImageTypeMappings()["principal"].MediaResourceID == "" {
 		log.Printf("No mappings found, attempting auto-configuration...")
 		if err := autoConfigureMappings(); err != nil {
 			log.Printf("Auto-configuration failed: %v", err)
 		}
 	}
 
-	if mapping, exists := imageTypeMappings[imageType]; exists && mapping.MediaResourceID != "" {
+	if mapping, exists := snapshotImageTypeMappings()[imageType]; exists && mapping.MediaResourceID != "" {
 		return mapping.MediaResourceID, nil
 	}
 
@@ -360,7 +380,7 @@ func autoConfigureMappings() error {
 
 	// Verificar que los mapeos se crearon correctamente
 	allMapped := true
-	for localType, mapping := range imageTypeMappings {
+	for localType, mapping := range snapshotImageTypeMappings() {
 		if mapping.MediaResourceID == "" {
 			log.Printf("WARNING: %s type still not mapped after auto-configuration", localType)
 			allMapped = false
@@ -415,7 +435,7 @@ func isGUID(str string) bool {
 
 func debugImageTypeMappings(c *gin.Context) {
 	// Forzar auto-configuración si no hay mapeos
-	if len(imageTypeMappings) == 0 || imageTypeMappings["principal"].MediaResourceID == "" {
+	if len(snapshotImageTypeMappings()) == 0 || snapshotImageTypeMappings()["principal"].MediaResourceID == "" {
 		log.Printf("Debug: No mappings found, triggering auto-configuration...")
 		if err := autoConfigureMappings(); err != nil {
 			log.Printf("Debug: Auto-configuration failed: %v", err)
@@ -423,10 +443,10 @@ func debugImageTypeMappings(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"currentMappings": imageTypeMappings,
-		"mappingStatus":   getMappingStatus(imageTypeMappings),
+		"currentMappings": snapshotImageTypeMappings(),
+		"mappingStatus":   getMappingStatus(snapshotImageTypeMappings()),
 		"debug": gin.H{
-			"totalMappings":   len(imageTypeMappings),
+			"totalMappings":   len(snapshotImageTypeMappings()),
 			"mappingsDetails": getMappingDetails(),
 		},
 	})
@@ -435,7 +455,7 @@ func debugImageTypeMappings(c *gin.Context) {
 func getMappingDetails() []map[string]interface{} {
 	details := make([]map[string]interface{}, 0)
 
-	for _, mapping := range imageTypeMappings {
+	for _, mapping := range snapshotImageTypeMappings() {
 		detail := map[string]interface{}{
 			"localType":       mapping.LocalType,
 			"mediaResourceId": mapping.MediaResourceID,

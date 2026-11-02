@@ -1,9 +1,8 @@
 package main
 
 import (
-	"crypto/tls"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -21,9 +20,10 @@ func proxyImageHandler(c *gin.Context) {
 		return
 	}
 
-	// Validar que la URL sea válida y de un protocolo seguro
-	if !strings.HasPrefix(imageURL, "http://") && !strings.HasPrefix(imageURL, "https://") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL protocol"})
+	// Validar esquema y host; la IP real se valida al conectar (ver safehttp.go),
+	// por lo que también cubre redirecciones y DNS rebinding.
+	if _, err := validatePublicURL(imageURL); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid URL"})
 		return
 	}
 
@@ -47,12 +47,7 @@ func proxyImageHandler(c *gin.Context) {
 	// }
 
 	// Timeout reducido a 6s — imágenes que tardan más no valen la pena esperar
-	client := &http.Client{
-		Timeout: 6 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
-		},
-	}
+	client := newSafeHTTPClient(6 * time.Second)
 
 	req, err := http.NewRequest("GET", imageURL, nil)
 	if err != nil {
@@ -90,7 +85,6 @@ func proxyImageHandler(c *gin.Context) {
 
 	// Configurar headers de respuesta para CSP y cache inteligente
 	c.Header("Content-Type", contentType)
-	c.Header("Access-Control-Allow-Origin", "*")
 	c.Header("X-Content-Type-Options", "nosniff")
 
 	// Cache inteligente basado en el resultado y parámetro nocache
@@ -109,16 +103,13 @@ func proxyImageHandler(c *gin.Context) {
 	}
 
 	// Leer y servir la imagen
-	imageData, err := ioutil.ReadAll(resp.Body)
+	imageData, err := readLimited(resp.Body, 5*1024*1024) // máximo 5MB, medido mientras se lee
 	if err != nil {
+		if errors.Is(err, errTooLarge) {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Image too large (max 5MB)"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read image data"})
-		return
-	}
-
-	// Verificar tamaño máximo (5MB)
-	maxSize := 5 * 1024 * 1024 // 5MB
-	if len(imageData) > maxSize {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "Image too large (max 5MB)"})
 		return
 	}
 
