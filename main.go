@@ -344,6 +344,10 @@ func main() {
 	// Seguridad: cabeceras, CORS por lista y autenticación por clave API
 	setupSecurity(router)
 
+	// Interfaz web y modo demo (sin base de datos ni claves; ver demo.go y ui.go)
+	registerUI(router)
+	demoRegister(router)
+
 	router.POST("/products/:id/enhance", enhanceProductAI)
 	router.GET("/products/:id/images/search", searchProductImages)
 	router.POST("/products/:id/images/process", processSelectedImages)

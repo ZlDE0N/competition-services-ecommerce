@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Competition Services · E-commerce — Catalog enrichment engine</title>
+  <meta name="description" content="Turn thin product records into catalog-ready content: specs, copy, SEO, images and an approval queue, ready to plug into any CRM or e-commerce through external modules.">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <svg width="0" height="0" class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z" fill="currentColor"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z M14 3v4h4 M10 12h5 M10 16h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1.8" fill="currentColor"/><path d="M5 18l5-5 3 3 3-4 3.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.6-3.1 8.2-7.5 9.5-4.4-1.3-7.5-4.9-7.5-9.5V6L12 3z M9 12l2.2 2.2L15.5 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 1112 0v6l1.5 2h-15L6 17z M10 21h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M6.5 8h11v3.5a5.5 5.5 0 01-11 0V8z M12 17v4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 4l9 5-9 5-9-5 9-5z M3 14l9 5 9-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6 M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6L13 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 119.5 4 6.8 6.8 0 0020 14.5z" fill="currentColor"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3L7 7M17 17l1.7 1.7M18.7 5.3L17 7M7 17l-1.7 1.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 8.5V6.5a2 2 0 00-2-2h-7a2 2 0 00-2 2v7a2 2 0 002 2h2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7-9.3-9.3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="8.2" cy="9.2" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 12h17M12 3.5c2.5 2.4 3.8 5.2 3.8 8.5s-1.3 6.1-3.8 8.5c-2.5-2.4-3.8-5.2-3.8-8.5S9.5 5.9 12 3.5z" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  </svg>
+
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav" id="nav">
+    <div class="wrap nav__in">
+      <a class="brand" href="#top" aria-label="Competition Services E-commerce, home">
+        <img src="/favicon.svg" alt="" width="30" height="30">
+        <span class="brand__t"><strong>Competition Services</strong><small>E-commerce · enrichment engine</small></span>
+      </a>
+      <nav class="nav__links" aria-label="Primary">
+        <a href="#how">How it works</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#demo">Live demo</a>
+        <a href="#connect">Connect</a>
+        <a href="#security">Security</a>
+      </nav>
+      <div class="nav__cta">
+        <button class="icon-btn" id="theme" type="button" aria-label="Switch to light theme" aria-pressed="false">
+          <svg class="ic ic--moon"><use href="#i-moon"/></svg><svg class="ic ic--sun"><use href="#i-sun"/></svg>
+        </button>
+        <a class="btn btn--primary" href="#demo">Try the demo <svg class="ic"><use href="#i-arrow"/></svg></a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero__bg" aria-hidden="true"><i class="orb orb--a"></i><i class="orb orb--b"></i><i class="grid"></i></div>
+      <div class="wrap hero__in">
+        <div class="hero__copy reveal">
+          <p class="eyebrow"><svg class="ic"><use href="#i-spark"/></svg> Product data, finished</p>
+          <h1>Turn thin product records into <span class="grad">catalog-ready content</span>.</h1>
+          <p class="lead">Feed it a SKU. It reads datasheets, searches the web, writes the copy for that category, picks and scores images, and hands you a reviewed result, ready to plug into your CRM or store through external modules.</p>
+          <div class="hero__btns">
+            <a class="btn btn--primary btn--lg" href="#demo">Enrich a product now <svg class="ic"><use href="#i-arrow"/></svg></a>
+            <a class="btn btn--ghost btn--lg" href="#connect">See how it connects</a>
+          </div>
+          <ul class="chips" aria-label="What it produces">
+            <li><svg class="ic"><use href="#i-doc"/></svg> Names &amp; descriptions</li>
+            <li><svg class="ic"><use href="#i-layers"/></svg> Specs</li>
+            <li><svg class="ic"><use href="#i-tag"/></svg> Tags &amp; SEO</li>
+            <li><svg class="ic"><use href="#i-image"/></svg> Images</li>
+            <li><svg class="ic"><use href="#i-shield"/></svg> Human approval</li>
+          </ul>
+        </div>
+
+        <div class="morph reveal" aria-label="Example of a record before and after enrichment">
+          <article class="card card--raw">
+            <header><span class="pill pill--warn">Before</span><span class="score" data-score="33"><b>33</b>%</span></header>
+            <h3>TALADRO VOLTIX 18V</h3>
+            <p class="muted">taladro inalambrico con bateria</p>
+            <ul class="tags"><li>taladro</li></ul>
+            <div class="bar"><i class="bar__f bar__f--warn"></i></div>
+          </article>
+          <div class="morph__arrow" aria-hidden="true"><svg class="ic"><use href="#i-spark"/></svg><i></i></div>
+          <article class="card card--ok">
+            <header><span class="pill pill--ok">After</span><span class="score" data-score="100"><b>100</b>%</span></header>
+            <h3>Taladro Percutor Inalámbrico Voltix 18 V con 2 Baterías y Maletín</h3>
+            <ul class="bullets">
+              <li>Motor sin escobillas de 18 V</li>
+              <li>Mandril metálico de 13 mm</li>
+              <li>2 baterías de litio de 2.0 Ah</li>
+            </ul>
+            <ul class="tags"><li>percutor</li><li>inalámbrico</li><li>18V</li><li>baterías de litio</li></ul>
+            <div class="bar"><i class="bar__f bar__f--ok"></i></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="facts" aria-label="Key facts">
+      <div class="wrap facts__in">
+        <div class="fact reveal"><svg class="ic"><use href="#i-layers"/></svg><b>Ranked sources</b><span>Datasheet, then catalog, then web. The best evidence wins.</span></div>
+        <div class="fact reveal"><svg class="ic"><use href="#i-shield"/></svg><b>A human decides</b><span>Nothing reaches the catalog without an approver.</span></div>
+        <div class="fact reveal"><svg class="ic"><use href="#i-clock"/></svg><b>Runs overnight</b><span>A nightly job enqueues new products for review.</span></div>
+        <div class="fact reveal"><svg class="ic"><use href="#i-bolt"/></svg><b>Fast to repeat</b><span>One-hour cache and duplicate-request merging.</span></div>
+      </div>
+    </section>
+
+    <section class="sec" id="how">
+      <div class="wrap">
+        <header class="sec__h reveal"><p class="eyebrow">How it works</p><h2>From a bare SKU to an approved record in five moves</h2><p class="lead">Every step is visible and every output is reviewable. The same pipeline runs when someone clicks a button and when the nightly job runs on its own.</p></header>
+        <ol class="steps">
+          <li class="step reveal"><span class="step__n">1</span><svg class="ic"><use href="#i-db"/></svg><h3>Collect</h3><p>Loads the product, its category, brand, barcodes and any datasheet links already on file.</p></li>
+          <li class="step reveal"><span class="step__n">2</span><svg class="ic"><use href="#i-search"/></svg><h3>Research</h3><p>Searches the web, looks up barcodes, and reads PDF and Word datasheets with an AI model.</p></li>
+          <li class="step reveal"><span class="step__n">3</span><svg class="ic"><use href="#i-spark"/></svg><h3>Write</h3><p>Generates the name, bullets, long description, specs, tags and SEO text using the prompt rules of that category.</p></li>
+          <li class="step reveal"><span class="step__n">4</span><svg class="ic"><use href="#i-shield"/></svg><h3>Check</h3><p>Keeps the brand only if the original named it, normalizes units and grammar, and removes unsafe markup.</p></li>
+          <li class="step reveal"><span class="step__n">5</span><svg class="ic"><use href="#i-queue"/></svg><h3>Approve</h3><p>Lands in a queue where an approver edits, accepts or rejects, with the audit trail kept.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="sec sec--alt" id="capabilities">
+      <div class="wrap">
+        <header class="sec__h reveal"><p class="eyebrow">Capabilities</p><h2>What a catalog team writes by hand, delivered as a reviewed first draft</h2></header>
+        <div class="cards">
+          <article class="cap reveal"><svg class="ic"><use href="#i-spark"/></svg><h3>Product copy</h3><p>Name, short and long description, specs and tags, written for the category and in Spanish-first style, with rules you can change.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-doc"/></svg><h3>Datasheet reading</h3><p>Pulls specifications out of PDF and DOCX files, with limits on size, pages and cost per product.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-image"/></svg><h3>Image discovery</h3><p>Finds candidate photos, scores relevance and transparency, labels quality, then prepares and stores the chosen ones.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-layers"/></svg><h3>Taxonomy-aware prompts</h3><p>A general prompt plus overrides by department, category or subcategory: tone, format and key attributes to always mention.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-shield"/></svg><h3>Warranty text</h3><p>Standardizes free-form warranty descriptions into one consistent, customer-friendly format.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-clock"/></svg><h3>Nightly enrichment</h3><p>Pick the taxonomies to cover; each night new matching products are enriched and queued for review.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-queue"/></svg><h3>Approval queue</h3><p>Pending, approved and rejected items with editing, one pending item per product, and who decided what.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-bell"/></svg><h3>Notifications</h3><p>In-app alerts and optional email to the people who approve, with a deep link to the queue.</p></article>
+          <article class="cap reveal"><svg class="ic"><use href="#i-bolt"/></svg><h3>Cache &amp; dedupe</h3><p>Results are cached for an hour and identical simultaneous requests share one run instead of paying twice.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="demo">
+      <div class="wrap">
+        <header class="sec__h reveal"><p class="eyebrow">Live demo</p><h2>Try it on a sample catalog</h2>
+          <p class="lead">Pick a product, run the enrichment and watch each stage. <strong>Demo mode uses hand-written sample data</strong>: no AI model, search or database is contacted. The response shapes are the same as the real API.</p></header>
+
+        <div class="demo reveal" id="demo-app">
+          <aside class="demo__col" aria-label="Sample catalog">
+            <h3 class="demo__h">Catalog <small>(sample, Spanish)</small></h3>
+            <ul class="plist" id="catalog" role="list"></ul>
+          </aside>
+
+          <section class="demo__col demo__main" aria-live="polite" aria-label="Enrichment workspace">
+            <div class="empty" id="stage-empty"><svg class="ic"><use href="#i-spark"/></svg><p>Select a product on the left to begin.</p></div>
+            <div id="stage-run" hidden>
+              <header class="runh">
+                <div><h3 id="run-name"></h3><p class="muted" id="run-meta"></p></div>
+                <button class="btn btn--primary" id="run-btn" type="button">Enrich with AI <svg class="ic"><use href="#i-spark"/></svg></button>
+              </header>
+              <ol class="timeline" id="timeline" aria-label="Pipeline stages"></ol>
+              <div id="result" hidden>
+                <div class="scorebar">
+                  <div class="ring" id="ring-before"><svg viewBox="0 0 44 44"><circle class="ring__t" cx="22" cy="22" r="18"/><circle class="ring__v" cx="22" cy="22" r="18"/></svg><b></b><small>Before</small></div>
+                  <svg class="ic scorebar__a"><use href="#i-arrow"/></svg>
+                  <div class="ring ring--ok" id="ring-after"><svg viewBox="0 0 44 44"><circle class="ring__t" cx="22" cy="22" r="18"/><circle class="ring__v" cx="22" cy="22" r="18"/></svg><b></b><small>After</small></div>
+                  <div class="scorebar__m"><span id="res-conf"></span><span id="res-time"></span><span id="res-rule"></span></div>
+                </div>
+                <div class="diff">
+                  <div class="diff__c"><h4>Before</h4><dl id="diff-before"></dl></div>
+                  <div class="diff__c diff__c--new"><h4>After</h4><dl id="diff-after"></dl></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="demo__col" aria-label="Approval queue">
+            <h3 class="demo__h">Approval queue</h3>
+            <div class="seg" role="tablist" aria-label="Queue filter" id="qtabs">
+              <button role="tab" aria-selected="true" data-status="pending" type="button">Pending</button>
+              <button role="tab" aria-selected="false" data-status="approved" type="button">Approved</button>
+              <button role="tab" aria-selected="false" data-status="rejected" type="button">Rejected</button>
+            </div>
+            <ul class="qlist" id="queue" role="list"></ul>
+            <button class="btn btn--ghost btn--sm" id="reset" type="button">Reset demo</button>
+          </aside>
+        </div>
+
+        <div class="payload reveal" id="payload-wrap" hidden>
+          <header><h3>What your connector receives</h3><span class="muted">Approved item, as returned by <code>GET /enrichment-queue?status=approved</code></span></header>
+          <pre><code id="payload"></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec sec--alt" id="connect">
+      <div class="wrap">
+        <header class="sec__h reveal"><p class="eyebrow">Connect</p><h2>One engine, any CRM or storefront, through external modules</h2>
+          <p class="lead">The engine exposes a small REST API. A <em>connector module</em> is a thin piece of code you own that asks for enrichment, waits for approval and copies the result into your system.</p></header>
+
+        <figure class="arch reveal" aria-label="Architecture diagram">
+          <svg viewBox="0 0 960 330" role="img" aria-labelledby="arch-t arch-d">
+            <title id="arch-t">How the engine connects</title>
+            <desc id="arch-d">Your CRM or e-commerce talks to a connector module, which calls the enrichment engine over REST. The engine uses an AI model, web search, object storage, a database and a cache.</desc>
+            <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="arch__ah"/></marker></defs>
+            <g class="arch__node"><rect x="20" y="115" width="190" height="100" rx="16"/><text x="115" y="158" class="arch__t">Your CRM</text><text x="115" y="182" class="arch__s">or e-commerce / ERP</text></g>
+            <g class="arch__node arch__node--mod"><rect x="290" y="115" width="190" height="100" rx="16"/><text x="385" y="158" class="arch__t">Connector module</text><text x="385" y="182" class="arch__s">your code · pull / push</text></g>
+            <g class="arch__node arch__node--core"><rect x="560" y="95" width="180" height="140" rx="18"/><text x="650" y="150" class="arch__t">Enrichment</text><text x="650" y="174" class="arch__t">engine</text><text x="650" y="200" class="arch__s">REST · approval queue</text></g>
+            <g class="arch__node arch__node--sm"><rect x="800" y="20" width="140" height="52" rx="12"/><text x="870" y="52" class="arch__s2">AI model</text></g>
+            <g class="arch__node arch__node--sm"><rect x="800" y="86" width="140" height="52" rx="12"/><text x="870" y="118" class="arch__s2">Web search</text></g>
+            <g class="arch__node arch__node--sm"><rect x="800" y="152" width="140" height="52" rx="12"/><text x="870" y="184" class="arch__s2">Object storage</text></g>
+            <g class="arch__node arch__node--sm"><rect x="800" y="218" width="140" height="52" rx="12"/><text x="870" y="250" class="arch__s2">SQL database</text></g>
+            <g class="arch__node arch__node--sm"><rect x="800" y="284" width="140" height="36" rx="12"/><text x="870" y="308" class="arch__s2">Redis cache</text></g>
+            <path class="arch__flow" d="M210 165H286" marker-end="url(#ah)"/><path class="arch__flow arch__flow--r" d="M286 185H214" marker-end="url(#ah)"/>
+            <path class="arch__flow" d="M480 165H556" marker-end="url(#ah)"/><path class="arch__flow arch__flow--r" d="M556 185H484" marker-end="url(#ah)"/>
+            <path class="arch__flow" d="M740 135C770 135 770 46 796 46" marker-end="url(#ah)"/>
+            <path class="arch__flow" d="M740 150C770 150 770 112 796 112" marker-end="url(#ah)"/>
+            <path class="arch__flow" d="M740 175C770 175 770 178 796 178" marker-end="url(#ah)"/>
+            <path class="arch__flow" d="M740 195C770 195 770 244 796 244" marker-end="url(#ah)"/>
+            <path class="arch__flow" d="M740 215C770 215 770 302 796 302" marker-end="url(#ah)"/>
+            <text x="248" y="150" class="arch__l">data</text><text x="518" y="150" class="arch__l">REST</text>
+          </svg>
+        </figure>
+
+        <div class="mods">
+          <article class="mod reveal"><h3>Pull</h3><p>Your system asks for a product by id and receives the proposal immediately.</p></article>
+          <article class="mod reveal"><h3>Poll &amp; sync</h3><p>A scheduled module reads <em>approved</em> items and writes them into the CRM or store.</p></article>
+          <article class="mod reveal"><h3>Batch</h3><p>Loop a CSV of SKUs through the same endpoint and review the results in one queue.</p></article>
+        </div>
+
+        <div class="code reveal">
+          <div class="code__tabs" role="tablist" aria-label="Examples" id="ctabs">
+            <button role="tab" aria-selected="true" data-tab="rest" type="button">REST (curl)</button>
+            <button role="tab" aria-selected="false" data-tab="connector" type="button">Connector module (Node)</button>
+          </div>
+          <div class="code__body" data-panel="rest">
+            <button class="copy" type="button" data-copy="rest" aria-label="Copy example"><svg class="ic"><use href="#i-copy"/></svg><span>Copy</span></button>
+<pre><code id="code-rest"># 1. Ask for an enrichment proposal for a product
+curl -X POST "$ENGINE_URL/products/$PRODUCT_ID/enhance" \
+  -H "X-API-Key: $ENGINE_API_KEY"
+
+# 2. An approver (identified by a header your system sets) accepts it
+curl -X POST "$ENGINE_URL/enrichment-queue/$QUEUE_ID/approve" \
+  -H "X-API-Key: $ENGINE_API_KEY" \
+  -H "X-User-Email: approver@your-company.example"
+
+# 3. Read what was approved, page by page
+curl "$ENGINE_URL/enrichment-queue?status=approved&amp;pageSize=50" \
+  -H "X-API-Key: $ENGINE_API_KEY"</code></pre>
+          </div>
+          <div class="code__body" data-panel="connector" hidden>
+            <button class="copy" type="button" data-copy="connector" aria-label="Copy example"><svg class="ic"><use href="#i-copy"/></svg><span>Copy</span></button>
+<pre><code id="code-connector">// connector.mjs — a minimal pull connector (Node 18+).
+// Copies approved enrichments into your own system.
+const base = process.env.ENGINE_URL;
+const headers = { "X-API-Key": process.env.ENGINE_API_KEY };
+
+const res = await fetch(`${base}/enrichment-queue?status=approved&amp;pageSize=50`, { headers });
+if (!res.ok) throw new Error(`engine answered ${res.status}`);
+const { items } = await res.json();
+
+for (const item of items) {
+  // reviewer edits win over the generated proposal
+  const data = (item.editedData ?? item.enrichedData).enhancedData;
+  await updateProductInYourSystem(item.productId, {
+    name: data.name,
+    shortDescription: data.shortDescription,
+    description: data.fullDescription,
+    tags: data.tags,
+    seoTitle: data.tituloSEO,
+    seoDescription: data.descripcionSEO,
+  });
+}
+
+// Your code: map the fields to your CRM or store API.
+async function updateProductInYourSystem(id, fields) { /* ... */ }</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="security">
+      <div class="wrap">
+        <header class="sec__h reveal"><p class="eyebrow">Safe by default</p><h2>Built to sit in front of real catalog data</h2></header>
+        <ul class="sec-list">
+          <li class="reveal"><svg class="ic"><use href="#i-shield"/></svg><div><h3>API key on every route</h3><p>In production the service refuses to start without keys, unless you explicitly choose to run open.</p></div></li>
+          <li class="reveal"><svg class="ic"><use href="#i-globe"/></svg><div><h3>Outbound requests are fenced</h3><p>Fetching images, PDFs and pages checks the real destination address on every connection and redirect, so it cannot be pointed at your internal network.</p></div></li>
+          <li class="reveal"><svg class="ic"><use href="#i-doc"/></svg><div><h3>Generated HTML is cleaned</h3><p>Model output and reviewer edits keep only simple formatting tags; scripts, handlers and links are removed.</p></div></li>
+          <li class="reveal"><svg class="ic"><use href="#i-check"/></svg><div><h3>Roles decide, not request bodies</h3><p>Who approved something comes from a trusted header and is checked against the database, never from the payload.</p></div></li>
+          <li class="reveal"><svg class="ic"><use href="#i-bolt"/></svg><div><h3>Limits everywhere</h3><p>Size caps on downloads and prompts, an image pixel limit, and an explicit CORS allow-list.</p></div></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot__in">
+      <div><strong>Competition Services · E-commerce</strong><p class="muted">Catalog enrichment engine. Go · Gin · SQL Server · Redis.</p></div>
+      <p class="fine">Independent project, not affiliated with, endorsed by or sponsored by Anthropic. It can use the Claude API for text and vision; Claude is a trademark of Anthropic, PBC. Demo content is fictional.</p>
+    </div>
+  </footer>
+</body>
+</html>

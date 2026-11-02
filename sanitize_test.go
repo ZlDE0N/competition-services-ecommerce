@@ -50,6 +50,18 @@ func TestStripHTML(t *testing.T) {
 	}
 }
 
+func TestStripHTMLNeverReturnsMarkup(t *testing.T) {
+	for _, in := range []string{
+		"&lt;script&gt;alert(1)&lt;/script&gt;", "&#60;img src=x onerror=alert(1)&#62;",
+		"<<script>script>alert(1)", "a &amp;lt;b&amp;gt; c", "x<y",
+	} {
+		got := stripHTML(in)
+		if strings.ContainsAny(got, "<>") {
+			t.Errorf("stripHTML(%q) = %q still contains angle brackets", in, got)
+		}
+	}
+}
+
 func TestSanitizeJSONStrings(t *testing.T) {
 	out, err := sanitizeJSONStrings([]byte(`{"enhancedData":{"name":"X","fullDescription":"<p>ok</p><script>bad()</script>","tags":["<b>a</b>","<img src=x onerror=1>"]},"n":3,"flag":true}`))
 	if err != nil {

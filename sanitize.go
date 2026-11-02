@@ -115,18 +115,17 @@ func escapeLike(s string) string {
 }
 
 // stripHTML returns only the text of s (no tags, entities decoded), for fields
-// that must be plain text such as a product name.
+// that must be plain text such as a product name. Entities are decoded, so the
+// result could contain "<" or ">" (from "&lt;script&gt;"): those are removed so
+// the value can never turn into markup if a consumer renders it as HTML.
 func stripHTML(s string) string {
-	if !strings.ContainsAny(s, "<>&") {
-		return strings.TrimSpace(s)
-	}
 	z := xhtml.NewTokenizer(strings.NewReader(s))
 	var out strings.Builder
 	skipping := ""
 	for {
 		switch z.Next() {
 		case xhtml.ErrorToken:
-			return strings.TrimSpace(out.String())
+			return plainTextOnly(out.String())
 		case xhtml.TextToken:
 			if skipping == "" {
 				out.Write(z.Text())
@@ -143,4 +142,10 @@ func stripHTML(s string) string {
 			}
 		}
 	}
+}
+
+var angleBrackets = strings.NewReplacer("<", "", ">", "")
+
+func plainTextOnly(s string) string {
+	return strings.TrimSpace(angleBrackets.Replace(s))
 }
