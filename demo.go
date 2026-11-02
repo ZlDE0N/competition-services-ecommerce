@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -291,6 +293,7 @@ func demoRegister(router *gin.Engine) {
 			item = &demoQueueItem{ID: demoID(demo.seq), ProductID: p.ID, Sku: p.SKU, ProductName: p.Name,
 				Status: "pending", EnrichmentModel: "demo (no model call)", CreatedAt: time.Now().UTC()}
 			demo.queue = append(demo.queue, item)
+			demo.trim()
 		}
 		item.EnrichedData = p.enriched()
 		queueID := item.ID
@@ -369,13 +372,34 @@ func demoRegister(router *gin.Engine) {
 	})
 }
 
-func demoID(n int) string {
-	const digits = "0123456789"
-	if n < 10 {
-		return "q-00" + string(digits[n])
+func demoID(n int) string { return fmt.Sprintf("q-%03d", n) }
+
+// maxDemoQueue bounds memory: the demo is public and unauthenticated, so a
+// visitor must not be able to grow it without limit.
+const maxDemoQueue = 60
+
+// trim drops the oldest reviewed items first, then the oldest of all.
+// The caller holds the lock.
+func (s *demoState) trim() {
+	for len(s.queue) > maxDemoQueue {
+		drop := 0
+		for i, q := range s.queue {
+			if q.Status != "pending" {
+				drop = i
+				break
+			}
+		}
+		s.queue = append(s.queue[:drop], s.queue[drop+1:]...)
 	}
-	if n < 100 {
-		return "q-0" + string(digits[n/10]) + string(digits[n%10])
+}
+
+// demoEnabled: on by default; in production only when DEMO_MODE=true.
+func demoEnabled() bool {
+	switch strings.ToLower(os.Getenv("DEMO_MODE")) {
+	case "true":
+		return true
+	case "false":
+		return false
 	}
-	return "q-" + string(digits[(n/100)%10]) + string(digits[(n/10)%10]) + string(digits[n%10])
+	return !strings.EqualFold(os.Getenv("ENVIRONMENT"), "production")
 }

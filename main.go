@@ -346,7 +346,11 @@ func main() {
 
 	// Interfaz web y modo demo (sin base de datos ni claves; ver demo.go y ui.go)
 	registerUI(router)
-	demoRegister(router)
+	if demoEnabled() {
+		demoRegister(router)
+	} else {
+		log.Printf("Demo API disabled (ENVIRONMENT=production; set DEMO_MODE=true to enable it)")
+	}
 
 	router.POST("/products/:id/enhance", enhanceProductAI)
 	router.GET("/products/:id/images/search", searchProductImages)

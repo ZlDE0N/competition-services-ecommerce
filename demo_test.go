@@ -171,8 +171,52 @@ func TestDemoContentIsSelfConsistentAndSafe(t *testing.T) {
 	}
 }
 
+func TestDemoQueueIsBounded(t *testing.T) {
+	r := demoRouter()
+	for i := 0; i < maxDemoQueue*3; i++ { // enrich + approve over and over: the abuse pattern
+		_, res := send(r, "POST", "/demo/enrich", `{"productId":"demo-001"}`)
+		send(r, "POST", "/demo/queue/"+res["queueId"].(string)+"/approve", `{}`)
+	}
+	demo.mu.Lock()
+	n := len(demo.queue)
+	demo.mu.Unlock()
+	if n > maxDemoQueue {
+		t.Fatalf("queue grew to %d (limit %d)", n, maxDemoQueue)
+	}
+	_, res := send(r, "POST", "/demo/enrich", `{"productId":"demo-002"}`)
+	if res["queueId"] == nil {
+		t.Error("enrich must keep working at the limit")
+	}
+	seen := map[string]bool{}
+	demo.mu.Lock()
+	for _, q := range demo.queue {
+		if seen[q.ID] {
+			t.Errorf("duplicate queue id %s", q.ID)
+		}
+		seen[q.ID] = true
+	}
+	demo.mu.Unlock()
+}
+
+func TestDemoEnabledRules(t *testing.T) {
+	cases := []struct {
+		env, mode string
+		want      bool
+	}{
+		{"", "", true}, {"development", "", true}, {"production", "", false},
+		{"production", "true", true}, {"development", "false", false}, {"production", "TRUE", true},
+	}
+	for _, c := range cases {
+		t.Setenv("ENVIRONMENT", c.env)
+		t.Setenv("DEMO_MODE", c.mode)
+		if got := demoEnabled(); got != c.want {
+			t.Errorf("ENVIRONMENT=%q DEMO_MODE=%q: got %v want %v", c.env, c.mode, got, c.want)
+		}
+	}
+}
+
 func TestDemoIDFormat(t *testing.T) {
-	for n, want := range map[int]string{1: "q-001", 9: "q-009", 10: "q-010", 42: "q-042", 100: "q-100", 999: "q-999"} {
+	for n, want := range map[int]string{1: "q-001", 9: "q-009", 10: "q-010", 42: "q-042", 100: "q-100", 999: "q-999", 1000: "q-1000", 12345: "q-12345"} {
 		if got := demoID(n); got != want {
 			t.Errorf("demoID(%d)=%s want %s", n, got, want)
 		}
