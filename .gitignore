@@ -1,0 +1,38 @@
+# Variables de entorno - NUNCA subir al repositorio
+.env
+.env.local
+.env.*.local
+
+# Binarios compilados
+*.exe
+*.dll
+*.so
+*.dylib
+/engine
+/competition-services-ecommerce
+
+# Archivos de prueba
+*.test
+*.out
+
+# Directorios de IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Directorio de vendor (si usas módulos vendor)
+vendor/
+
+# Archivos de cobertura
+*.cover
+*.coverprofile
+coverage.html
