@@ -1,6 +1,6 @@
 # Competition Services · E-commerce
 
-**A catalog enrichment engine.** Give it a SKU; it reads datasheets, searches the web, writes the copy for that product category, finds and scores images, and hands a human a reviewed proposal. Once approved, an *external module* of your own copies the result into your CRM, e-commerce platform or ERP.
+**A catalog enrichment engine built on the Claude API.** Give it a SKU; it gathers evidence (datasheets, catalog data, web results), has Claude write the copy for that product category, and hands a human a reviewed proposal. Once approved, an *external module* of your own copies the result into your CRM, e-commerce platform or ERP.
 
 ![Hero](docs/img/hero.png)
 
@@ -9,7 +9,46 @@
 > go run .
 > # open http://localhost:8080
 > ```
-> The built-in demo runs on hand-written sample data. No database, AI model or search service is contacted.
+> The built-in demo runs on hand-written sample data. No database, Claude call or search service is contacted.
+
+## Built on Claude
+
+Claude does the writing and the reading that a catalog team does by hand. Everything around it (evidence ranking, validation, sanitizing, approval) exists so that model output is **proposed, checked and then approved by a person**, never published directly.
+
+| Task | Model (default) | How it is used |
+|---|---|---|
+| Product name, short and long description, specs, tags, SEO text | `claude-haiku-4-5-20251001` | A static system prompt per taxonomy marked with `cache_control` (prompt caching) plus a small per-product message. |
+| Search-term generation (web and image search) | `claude-haiku-4-5-20251001` | Short JSON-shaped completions with deterministic fallbacks if the call fails. |
+| Reading scanned or image-only PDF datasheets | `claude-sonnet-4-20250514` (`PDF_READER_MODEL` overrides it) | The PDF is sent as a base64 `document` block. Text-based PDFs and DOCX files are read locally first, so the model is only the fallback. |
+| Warranty text standardization | `claude-haiku-4-5-20251001` | The user text is delimited in `<warranty_text>` and declared to be data, not instructions. |
+
+Model ids are fixed in the code. Check them against the current model list and set the ones you want before relying on them.
+
+**What Claude is not used for.** Images are not sent to the model: relevance is scored from titles and the transparency and quality analysis is done on pixels, locally.
+
+### Keeping cost and latency in check
+
+- **Prompt caching** on the two heaviest steps (description plus keywords, commercial content): the static instructions are cached, so repeat calls skip most of the input cost and time.
+- **One-hour result cache** and **request merging**: a pre-warm and a click for the same product share one run.
+- **Smallest model that works** for text; the larger model only for documents.
+- **PDF limits:** size cap (`PDF_MAX_MB`), documents per product (`PDF_MAX_DOCS_PER_PRODUCT`), output tokens (`PDF_MAX_TOKENS`), and a 30-day cache of extracted text so the same datasheet is never re-sent.
+- **One Claude client** (`claude_client.go`): reuses connections, retries only network errors, 429, 5xx and 529 with backoff, honours `Retry-After`, and always keeps the API's own error message.
+
+### Treating model output as untrusted
+
+- Generated HTML passes an allow-list sanitizer (simple formatting tags, no attributes); names are reduced to plain text.
+- Reviewer edits are validated as JSON and every string is sanitized before it is stored.
+- Nothing reaches the catalog until an approver accepts it, and approval needs a role checked in the database.
+- Web pages, PDFs and images the model is given are fetched through an SSRF-safe client with size limits.
+
+### Using it
+
+```bash
+export ANTHROPIC_API_KEY=...        # from the Claude Console
+export BRAVE_SEARCH_API_KEY=...     # web and image search
+```
+
+Without a key the engine still runs: the UI and the demo need none, and the real pipeline answers with a clear error instead of failing silently.
 
 ## What it does
 
@@ -48,7 +87,7 @@ The demo needs nothing. The full engine needs the services below; copy `.env.exa
 
 | Needs | For |
 |---|---|
-| An AI model API key (`ANTHROPIC_API_KEY`) | Writing copy, reading PDFs, judging images. The code uses the Claude API. |
+| A Claude API key (`ANTHROPIC_API_KEY`) | Writing the copy, search terms and warranty text; reading scanned datasheets. |
 | `BRAVE_SEARCH_API_KEY` | Web and image search. |
 | SQL Server with the `catalog` schema | The product catalog, the queue and the notification tables. See [docs/DATA-MODEL.md](docs/DATA-MODEL.md). |
 | Redis (TLS) | Result cache and prompt store. |
@@ -138,4 +177,4 @@ go test -race ./...    # unit tests for security, sanitizer, demo and UI
 
 ---
 
-*Independent project. Not affiliated with, endorsed by or sponsored by Anthropic. It can use the Claude API for text and vision; Claude is a trademark of Anthropic, PBC. Sample data is fictional.*
+*Independent project. Not affiliated with, endorsed by or sponsored by Anthropic. It uses the Claude API for text generation and document reading; Claude is a trademark of Anthropic, PBC. Sample data is fictional.*

@@ -30,7 +30,7 @@ One **pending** item per product: enqueueing again updates it. An approver can e
 |---|---|---|
 | SQL Server | Catalog, queue, taxonomy config, notifications, roles | Product features are disabled; `/health` says so |
 | Redis (TLS) | Result and prompt cache | The service runs without cache |
-| AI model API | Copy, datasheets, image judgment | Fallback content where one exists |
+| Claude API | Copy, search terms, scanned datasheets | Fallback content where one exists |
 | Brave Search | Web and image search | Evidence comes from the catalog only |
 | Blob Storage | Chosen images | Image upload is disabled |
 
