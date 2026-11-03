@@ -88,8 +88,12 @@ func connectToRedis() error {
 
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		// Intentar sin TLS como fallback (puerto 6379)
 		rdb.Close()
+		// Plaintext fallback only when explicitly allowed (local development).
+		if os.Getenv("REDIS_ALLOW_INSECURE") != "true" {
+			return fmt.Errorf("failed to connect to Redis over TLS: %v (set REDIS_ALLOW_INSECURE=true only for local development)", err)
+		}
+		log.Printf("⚠️  Redis: falling back to an unencrypted connection (REDIS_ALLOW_INSECURE=true)")
 
 		rdb = redis.NewClient(&redis.Options{
 			Addr:         redisHost + ":6379", // Puerto no-SSL
@@ -252,14 +256,14 @@ func findProductByID(id string) (*Product, error) {
 		LEFT JOIN catalog.tblBrand b ON p.BrandId = b.BrandId
 		WHERE p.ProductId = CAST(@p1 AS UNIQUEIDENTIFIER)
 		   OR p.Sku = @p1
-		   OR p.Barcodes LIKE '%' + @p1 + '%'
+		   OR p.Barcodes LIKE '%' + @p2 + '%' ESCAPE '\'
 		   OR p.ManufacturerPartNumber = @p1
 		   OR p.FamilyId = CAST(@p1 AS UNIQUEIDENTIFIER)
-		   OR p.ExternalCodes LIKE '%' + @p1 + '%'
+		   OR p.ExternalCodes LIKE '%' + @p2 + '%' ESCAPE '\'
 	`
 
 	var product Product
-	row := db.QueryRow(query, id)
+	row := db.QueryRow(query, id, escapeLike(id))
 
 	// Use NullString for all non-pointer string fields — DB may store NULL for any of them
 	var (
@@ -308,25 +312,6 @@ func findProductByID(id string) (*Product, error) {
 	return &product, nil
 }
 
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Configurar headers CORS
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, ocp-apim-subscription-key, X-User-Email")
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Max-Age", "86400")
-
-		// Manejar preflight OPTIONS request
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
-}
-
 // REMOVED: updateBlobUrl endpoint - el cliente now handles all database operations directly
 
 func main() {
@@ -356,8 +341,16 @@ func main() {
 
 	router := gin.Default()
 
-	// Configurar CORS
-	router.Use(corsMiddleware())
+	// Seguridad: cabeceras, CORS por lista y autenticación por clave API
+	setupSecurity(router)
+
+	// Interfaz web y modo demo (sin base de datos ni claves; ver demo.go y ui.go)
+	registerUI(router)
+	if demoEnabled() {
+		demoRegister(router)
+	} else {
+		log.Printf("Demo API disabled (ENVIRONMENT=production; set DEMO_MODE=true to enable it)")
+	}
 
 	router.POST("/products/:id/enhance", enhanceProductAI)
 	router.GET("/products/:id/images/search", searchProductImages)
@@ -368,10 +361,10 @@ func main() {
 
 	// Gestión de prompts por taxonomía
 	router.GET("/prompts/config", getPromptConfig)
-	router.PUT("/prompts/general", updateGeneralPrompt)
-	router.POST("/prompts/taxonomy", createTaxonomyPrompt)
-	router.PUT("/prompts/taxonomy/:id", updateTaxonomyPrompt)
-	router.DELETE("/prompts/taxonomy/:id", deleteTaxonomyPrompt)
+	router.PUT("/prompts/general", requireApprover(), updateGeneralPrompt)
+	router.POST("/prompts/taxonomy", requireApprover(), createTaxonomyPrompt)
+	router.PUT("/prompts/taxonomy/:id", requireApprover(), updateTaxonomyPrompt)
+	router.DELETE("/prompts/taxonomy/:id", requireApprover(), deleteTaxonomyPrompt)
 	router.GET("/prompts/preview/:id", previewPromptForProduct)
 	router.GET("/taxonomy/options", getTaxonomyOptions)
 	router.GET("/prompts/match", matchPromptForTaxonomy)
@@ -383,7 +376,7 @@ func main() {
 	// Endpoints para MediaResources y mapeo de tipos
 	router.GET("/media-resources", getAvailableMediaResources)
 	router.GET("/image-types/mappings", getImageTypeMappings)
-	router.POST("/image-types/configure", configureImageTypeMappings)
+	router.POST("/image-types/configure", requireApprover(), configureImageTypeMappings)
 
 	// Endpoints para procesamiento de imágenes
 	router.GET("/image-processing/config", getImageProcessingConfig)
@@ -1786,10 +1779,10 @@ func convertTextToHTML(text string) string {
 		if strings.HasPrefix(line, "•") || strings.HasPrefix(line, "-") || strings.HasPrefix(line, "*") {
 			// Remover el bullet character al inicio
 			bulletText := strings.TrimSpace(line[1:])
-			htmlBuilder.WriteString("<li>" + bulletText + "</li>")
+			htmlBuilder.WriteString("<li>" + sanitizeHTML(bulletText) + "</li>")
 		} else {
 			// Texto normal como párrafo
-			htmlBuilder.WriteString("<p>" + line + "</p>")
+			htmlBuilder.WriteString("<p>" + sanitizeHTML(line) + "</p>")
 		}
 	}
 
@@ -1835,7 +1828,7 @@ func buildShortDescriptionFromBullets(content *CommercialContent) string {
 		var sb strings.Builder
 		sb.WriteString("<ul>\n")
 		for _, bullet := range labelValueBullets {
-			sb.WriteString("<li>" + bullet + "</li>\n")
+			sb.WriteString("<li>" + sanitizeHTML(bullet) + "</li>\n")
 		}
 		sb.WriteString("</ul>")
 		return sb.String()
@@ -1864,7 +1857,7 @@ func generateImprovedShortDescription(product Product, technicalDocs *TechnicalD
 				var sb strings.Builder
 				sb.WriteString("<ul>\n")
 				for _, item := range items {
-					sb.WriteString("<li>" + item + "</li>\n")
+					sb.WriteString("<li>" + sanitizeHTML(item) + "</li>\n")
 				}
 				sb.WriteString("</ul>")
 				return sb.String()
@@ -1898,7 +1891,7 @@ func generateImprovedShortDescription(product Product, technicalDocs *TechnicalD
 	var sb strings.Builder
 	sb.WriteString("<ul>\n")
 	for _, spec := range keySpecs {
-		sb.WriteString("<li>" + spec + "</li>\n")
+		sb.WriteString("<li>" + sanitizeHTML(spec) + "</li>\n")
 	}
 	sb.WriteString("</ul>")
 	return sb.String()
@@ -2711,7 +2704,7 @@ func generateStructuredLongDescription(product Product, technicalDocs *Technical
 			longDesc.WriteString("<ul>\n") // Eliminar subtítulo según feedback comercial
 			for _, bullet := range commercialContent.DevelopedBullets {
 				enhancedBullet := enhanceTextWithFormatting(bullet)
-				longDesc.WriteString("<li>" + enhancedBullet + "</li>\n")
+				longDesc.WriteString("<li>" + sanitizeHTML(enhancedBullet) + "</li>\n")
 			}
 			longDesc.WriteString("</ul>\n")
 		}
@@ -2737,7 +2730,7 @@ func generateStructuredLongDescription(product Product, technicalDocs *Technical
 		if len(features) > 0 {
 			longDesc.WriteString("<ul>\n") // Eliminar subtítulo según feedback comercial
 			for _, feature := range features {
-				longDesc.WriteString("<li>" + feature + "</li>\n")
+				longDesc.WriteString("<li>" + sanitizeHTML(feature) + "</li>\n")
 			}
 			longDesc.WriteString("</ul>\n")
 		}
@@ -2753,7 +2746,7 @@ func generateStructuredLongDescription(product Product, technicalDocs *Technical
 		if len(additionalFeatures) > 0 {
 			longDesc.WriteString("<ul>\n")
 			for _, feature := range additionalFeatures {
-				longDesc.WriteString("<li>" + feature + "</li>\n")
+				longDesc.WriteString("<li>" + sanitizeHTML(feature) + "</li>\n")
 			}
 			longDesc.WriteString("</ul>\n")
 		}

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -67,7 +66,7 @@ func initAzureStorage() error {
 func (az *AzureStorageClient) UploadImageFromURL(imageURL, productId, imageType string, metadata map[string]string) (*AzureUploadResult, error) {
 
 	// Download image from URL
-	resp, err := http.Get(imageURL)
+	resp, err := safeGet(newSafeHTTPClient(30*time.Second), imageURL)
 	if err != nil {
 		return &AzureUploadResult{Success: false, Error: fmt.Sprintf("Failed to download image: %v", err)}, err
 	}
@@ -78,7 +77,7 @@ func (az *AzureStorageClient) UploadImageFromURL(imageURL, productId, imageType 
 	}
 
 	// Read image data
-	imageData, err := io.ReadAll(resp.Body)
+	imageData, err := readLimited(resp.Body, maxImageDownloadBytes)
 	if err != nil {
 		return &AzureUploadResult{Success: false, Error: fmt.Sprintf("Failed to read image data: %v", err)}, err
 	}

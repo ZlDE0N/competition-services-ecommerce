@@ -1,5 +1,5 @@
 # Multi-stage build para optimizar el tamaño de la imagen final
-FROM golang:1.25-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 # Instalar dependencias del sistema necesarias
 RUN apk --no-cache add ca-certificates git
@@ -20,7 +20,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o engine .
 
 # Imagen final ligera
-FROM alpine:latest
+FROM alpine:3
 
 # Instalar certificados CA para conexiones HTTPS y wget para health check
 RUN apk --no-cache add ca-certificates tzdata wget

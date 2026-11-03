@@ -148,10 +148,8 @@ func readPDFFromURL(url string) (string, error) {
 	log.Printf("🔄 Iniciando extracción híbrida para PDF: %s", truncateString(url, 100))
 
 	// Descargar el archivo PDF — timeout reducido a 10s (era 30s)
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	resp, err := client.Get(url)
+	client := newSafeHTTPClient(10 * time.Second)
+	resp, err := safeGet(client, url)
 	if err != nil {
 		return "", fmt.Errorf("error downloading PDF: %v", err)
 	}
@@ -162,7 +160,7 @@ func readPDFFromURL(url string) (string, error) {
 	}
 
 	// Leer el contenido
-	content, err := io.ReadAll(resp.Body)
+	content, err := readLimited(resp.Body, maxDocDownloadBytes)
 	if err != nil {
 		return "", fmt.Errorf("error reading PDF content: %v", err)
 	}
@@ -458,7 +456,7 @@ func isTextMostlyReadable(text string) bool {
 // readDocxFromURL lee el contenido de un archivo Word (.docx) desde una URL
 func readDocxFromURL(url string) (string, error) {
 	// Descargar el archivo DOCX
-	resp, err := http.Get(url)
+	resp, err := safeGet(newSafeHTTPClient(30*time.Second), url)
 	if err != nil {
 		return "", fmt.Errorf("error downloading DOCX file: %v", err)
 	}
@@ -477,7 +475,7 @@ func readDocxFromURL(url string) (string, error) {
 	defer tmpFile.Close()
 
 	// Copiar el contenido descargado al archivo temporal
-	_, err = io.Copy(tmpFile, resp.Body)
+	_, err = io.Copy(tmpFile, io.LimitReader(resp.Body, maxDocDownloadBytes))
 	if err != nil {
 		return "", fmt.Errorf("error writing to temp file: %v", err)
 	}

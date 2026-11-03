@@ -1,0 +1,140 @@
+# Competition Services · E-commerce
+
+**A catalog enrichment engine.** Give it a SKU; it reads datasheets, searches the web, writes the copy for that product category, finds and scores images, and hands a human a reviewed proposal. Once approved, an *external module* of your own copies the result into your CRM, e-commerce platform or ERP.
+
+![Hero](docs/img/hero.png)
+
+> **Try it in ten seconds, no accounts and no keys:**
+> ```bash
+> go run .
+> # open http://localhost:8080
+> ```
+> The built-in demo runs on hand-written sample data. No database, AI model or search service is contacted.
+
+## What it does
+
+| | |
+|---|---|
+| **Product copy** | Name, short and long description, specs, tags, SEO title and description. Spanish-first style rules; the prompts are yours to change. |
+| **Datasheet reading** | Pulls specifications out of PDF and DOCX files, with limits on size, pages and cost per product. |
+| **Source ranking** | Datasheet beats catalog data, which beats web results. The brand is kept only if the original name had it. |
+| **Image discovery** | Finds candidates (Brave Search, barcode lookup), scores relevance and transparency, labels quality, prepares and stores the chosen ones. |
+| **Taxonomy-aware prompts** | One general prompt plus overrides by department, category or subcategory: tone, format, attributes that must always appear. |
+| **Warranty text** | Standardizes free-form warranty descriptions into one consistent format. |
+| **Nightly enrichment** | Choose the taxonomies to cover; each night (02:00 UTC-6) new matching products are enriched and queued. |
+| **Approval queue** | Pending / approved / rejected, reviewer edits, one pending item per product, who decided what, e-mail and in-app notifications. |
+| **Cache and dedupe** | Results are cached for one hour; identical simultaneous requests share a single run. |
+
+![Live demo](docs/img/demo.png)
+
+## How it connects
+
+![Architecture](docs/img/connect.png)
+
+The engine exposes a small REST API. A **connector module** is a thin piece of code you own: it asks for enrichment, waits for approval and copies the result into your system. See **[docs/CONNECTORS.md](docs/CONNECTORS.md)** for the three patterns (pull, poll and sync, batch) with working examples.
+
+```bash
+# ask for a proposal
+curl -X POST "$ENGINE_URL/products/$PRODUCT_ID/enhance" -H "X-API-Key: $ENGINE_API_KEY"
+
+# read what was approved
+curl "$ENGINE_URL/enrichment-queue?status=approved&pageSize=50" -H "X-API-Key: $ENGINE_API_KEY"
+```
+
+## Running the real engine
+
+The demo needs nothing. The full engine needs the services below; copy `.env.example` to `.env` and fill it in.
+
+| Needs | For |
+|---|---|
+| An AI model API key (`ANTHROPIC_API_KEY`) | Writing copy, reading PDFs, judging images. The code uses the Claude API. |
+| `BRAVE_SEARCH_API_KEY` | Web and image search. |
+| SQL Server with the `catalog` schema | The product catalog, the queue and the notification tables. See [docs/DATA-MODEL.md](docs/DATA-MODEL.md). |
+| Redis (TLS) | Result cache and prompt store. |
+| Azure Blob Storage | Storing the chosen images. |
+| SendGrid (optional) | E-mail to approvers. |
+
+```bash
+for f in migrations/*.sql; do sqlcmd -S "$DB_SERVER" -d "$DB_DATABASE" -U "$DB_USER" -P "$DB_PASSWORD" -i "$f"; done
+ENVIRONMENT=production API_KEYS=a-long-random-key go run .
+```
+
+Or with Docker: `docker build -t catalog-enrichment . && docker run --env-file .env -p 8080:8080 catalog-enrichment`.
+
+## API
+
+All routes except `/`, `/health`, `/assets/*` and `/demo/*` need `X-API-Key`. Routes that change configuration or content also check, in the database, that the person named in `X-User-Email` has an approval role.
+
+| Method and path | Purpose |
+|---|---|
+| `POST /products/:id/enhance` | Generate an enrichment proposal (`?refresh=true` skips the cache). |
+| `GET /products/:id/images/search` | Find and score candidate images. |
+| `POST /products/:id/images/process` | Prepare the selected images. |
+| `POST /warranty/standardize-description` | Standardize a warranty text. |
+| `POST /enrichment-enqueue` | Put a proposal in the approval queue. |
+| `GET /enrichment-queue` | List items (`status=pending\|approved\|rejected\|all`, `page`, `pageSize`). |
+| `GET /enrichment-queue/:id` | One item. |
+| `POST /enrichment-queue/:id/approve` · `…/reject` | Decide (approval role required). |
+| `PATCH /enrichment-queue/:id` | Edit a pending item (sanitized, approval role). |
+| `GET/POST/DELETE /enrichment-taxonomy-config` | Taxonomies covered by the nightly job. |
+| `GET /prompts/config` · `PUT/POST/DELETE /prompts/...` | Read and manage prompts (writes need an approval role). |
+| `GET /prompts/preview/:id` · `GET /prompts/match` · `GET /taxonomy/options` | Preview the prompt a product would use. |
+| `GET /media-resources` · `GET /image-types/mappings` · `POST /image-types/configure` | Map image types to media resources. |
+| `GET /notifications` · `PATCH /notifications/:id/read` | In-app notifications. |
+| `GET /proxy-image?url=` | Fetch an external image for the UI (SSRF-safe, 5 MB limit). |
+| `GET /health` · `GET /cache/stats` | Health and cache statistics. |
+
+A proposal looks like this:
+
+```json
+{
+  "productId": "…",
+  "originalData": { "name": "TALADRO VOLTIX 18V", "shortDescription": "taladro inalambrico con bateria", "tags": ["taladro"] },
+  "enhancedData": { "name": "Taladro Percutor Inalámbrico Voltix 18 V …", "shortDescription": "<ul><li>…</li></ul>",
+                    "fullDescription": "<p>…</p>", "tags": ["…"], "tituloSEO": "…", "descripcionSEO": "…" },
+  "confidence": 0.94,
+  "ruleApplied": { "…": "…" }
+}
+```
+
+## Safe by default
+
+- **API key on every private route.** In production the service refuses to start without `API_KEYS`.
+- **Outbound fetches are fenced.** Images, PDFs and pages are fetched by a client that checks the real destination IP on every connection and redirect, so it cannot be aimed at your internal network. Downloads and decoded images have size limits.
+- **Generated HTML is cleaned.** Model output and reviewer edits keep only simple formatting tags.
+- **Roles decide, not request bodies.** Reviewer identity comes from a trusted header and is checked against the database.
+- **Explicit CORS allow-list**, strict CSP on the UI (no CDN, no inline code), size caps on prompts and requests.
+- `govulncheck` reports **0 reachable vulnerabilities**; CI runs it on every change.
+
+Details and the trust model: **[SECURITY.md](SECURITY.md)**.
+
+## Project layout
+
+```
+main.go                 router, product lookup, enrichment pipeline
+search_terms_ai.go      search-term generation (AI and fallbacks)
+image_search.go         image discovery, relevance scoring
+image_analysis.go       transparency and quality analysis
+image_processor.go      image preparation for the client
+pdf_reader.go, utils.go datasheet reading (PDF, DOCX)
+prompts.go              general and per-taxonomy prompts
+queue.go                approval queue
+taxonomy_config.go      taxonomies for the nightly job
+cron.go                 nightly job
+notifications.go        e-mail and in-app notifications
+security.go, safehttp.go, sanitize.go   authentication, SSRF-safe client, HTML sanitizer
+demo.go, ui.go, web/    demo API and the embedded web UI
+migrations/             SQL for the queue, taxonomy config and schema
+```
+
+## Status
+
+Early. The engine is production-shaped but its data layer is written against a specific SQL Server catalog schema (see [docs/DATA-MODEL.md](docs/DATA-MODEL.md)); a storage adapter so it can read any catalog is the next step. Copy rules are Spanish-first. There is no license file yet: until one is added, all rights are reserved.
+
+```bash
+go test -race ./...    # unit tests for security, sanitizer, demo and UI
+```
+
+---
+
+*Independent project. Not affiliated with, endorsed by or sponsored by Anthropic. It can use the Claude API for text and vision; Claude is a trademark of Anthropic, PBC. Sample data is fictional.*

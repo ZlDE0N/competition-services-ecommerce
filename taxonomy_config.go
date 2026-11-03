@@ -110,19 +110,13 @@ func createTaxonomyConfig(c *gin.Context) {
 	// Auth: use X-User-Email for role check (set by the trusted caller, validated against DB).
 	// createdBy from body is only used for audit trail — role check uses the header
 	// so a spoofed body field cannot grant access (hasQueueApprovalRole hits the DB).
-	authEmail := strings.TrimSpace(c.GetHeader("X-User-Email"))
-	if authEmail == "" {
-		authEmail = strings.TrimSpace(req.CreatedBy)
-	}
+	authEmail := actorEmail(c)
 	if !hasQueueApprovalRole(authEmail) {
 		handleError(c, http.StatusForbidden, "FORBIDDEN", "Se requiere rol Products Admin o Super Admin", "")
 		return
 	}
-	// Audit field: prefer body value (display name context), fall back to auth email
-	createdBy := strings.TrimSpace(req.CreatedBy)
-	if createdBy == "" {
-		createdBy = authEmail
-	}
+	// Audit identity is the verified actor, not a name supplied in the body.
+	createdBy := authEmail
 
 	// Validate departmentId is a valid UUID
 	if _, err := uuid.Parse(req.DepartmentId); err != nil {
@@ -133,8 +127,14 @@ func createTaxonomyConfig(c *gin.Context) {
 	if req.Threshold <= 0 {
 		req.Threshold = 20
 	}
+	if req.Threshold > 500 {
+		req.Threshold = 500
+	}
 	if req.DaysBack <= 0 {
 		req.DaysBack = 7
+	}
+	if req.DaysBack > 365 {
+		req.DaysBack = 365
 	}
 
 	id := uuid.New().String()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -367,13 +368,10 @@ func approveEnrichmentQueueItem(c *gin.Context) {
 	}
 	id := c.Param("id")
 
-	var req ApproveRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		req.ReviewedBy = ""
-	}
-	reviewedBy := strings.TrimSpace(req.ReviewedBy)
+	// Identity comes from the trusted caller's header, never from the body.
+	reviewedBy := actorEmail(c)
 
-	// Server-side role check — X-User-Email alone is not trusted
+	// Server-side role check against the database
 	if !hasQueueApprovalRole(reviewedBy) {
 		handleError(c, http.StatusForbidden, "FORBIDDEN", "Se requiere rol Products Admin o Super Admin", "")
 		return
@@ -427,12 +425,11 @@ func approveEnrichmentQueueItem(c *gin.Context) {
 	// will be added when the AI enrichment is expanded to produce them.
 	// Note: LastModifiedBy is uniqueidentifier — not setting it here since we
 	// only have the email string; the DB audit trail is in tblPIMEnrichmentQueue.
-	// LastModifiedDate is computed here (Panama local, UTC-5, no DST) instead
-	// of GETDATE()/SYSUTCDATETIME() — Azure SQL Database always runs in UTC
-	// regardless of which SQL function is used, but the portal renders this
-	// column with no timezone info, so it must receive an already-local value
-	// (matching how the .NET portal API writes it on manual edits).
-	panamaNow := time.Now().UTC().Add(-5 * time.Hour)
+	// LastModifiedDate is computed here in the catalog's local time instead of
+	// GETDATE()/SYSUTCDATETIME(): the database always runs in UTC, but the
+	// consuming UI renders this column with no timezone, so it needs an
+	// already-local value (offset configurable, see catalogLocalNow).
+	catalogNow := catalogLocalNow()
 	var err error
 	_, err = tx.Exec(`
 		UPDATE catalog.tblproduct
@@ -443,10 +440,10 @@ func approveEnrichmentQueueItem(c *gin.Context) {
 			LastModifiedDate = @p5
 		WHERE CAST(ProductId AS NVARCHAR(36)) = @p1
 	`, item.ProductId,
-		enriched.EnhancedData.Name,
-		enriched.EnhancedData.ShortDescription,
-		enriched.EnhancedData.FullDescription,
-		panamaNow,
+		stripHTML(enriched.EnhancedData.Name),
+		sanitizeHTML(enriched.EnhancedData.ShortDescription),
+		sanitizeHTML(enriched.EnhancedData.FullDescription),
+		catalogNow,
 	)
 	if err != nil {
 		handleError(c, http.StatusInternalServerError, "DATABASE_ERROR", "Error al actualizar producto", err.Error())
@@ -491,7 +488,8 @@ func rejectEnrichmentQueueItem(c *gin.Context) {
 		return
 	}
 
-	// Server-side role check
+	// Identity comes from the trusted caller's header, never from the body.
+	req.ReviewedBy = actorEmail(c)
 	if !hasQueueApprovalRole(req.ReviewedBy) {
 		handleError(c, http.StatusForbidden, "FORBIDDEN", "Se requiere rol Products Admin o Super Admin", "")
 		return
@@ -576,7 +574,12 @@ func editEnrichmentQueueItem(c *gin.Context) {
 		return
 	}
 
-	editedStr := string(req.EditedData)
+	cleaned, cleanErr := sanitizeJSONStrings(req.EditedData)
+	if cleanErr != nil {
+		handleError(c, http.StatusBadRequest, "INVALID_EDITED_DATA", "Datos editados inválidos", cleanErr.Error())
+		return
+	}
+	editedStr := string(cleaned)
 	result, err := db.Exec(`
 		UPDATE catalog.tblPIMEnrichmentQueue
 		SET EditedData = @p2
@@ -593,6 +596,18 @@ func editEnrichmentQueueItem(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "edited", "id": id})
+}
+
+// catalogLocalNow returns the current time shifted by CATALOG_UTC_OFFSET_HOURS
+// (default -5, no daylight saving) to match how the catalog stores local times.
+func catalogLocalNow() time.Time {
+	offset := -5
+	if v := strings.TrimSpace(os.Getenv("CATALOG_UTC_OFFSET_HOURS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= -14 && n <= 14 {
+			offset = n
+		}
+	}
+	return time.Now().UTC().Add(time.Duration(offset) * time.Hour)
 }
 
 // ---------------------------------------------------------------------------

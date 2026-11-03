@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
-	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -41,9 +41,7 @@ type TransparencyAnalysis struct {
 
 func NewImageTransparencyAnalyzer() *ImageTransparencyAnalyzer {
 	return &ImageTransparencyAnalyzer{
-		client: &http.Client{
-			Timeout: 8 * time.Second, // Reducido de 30s — imágenes lentas no vale la pena esperar
-		},
+		client: newSafeHTTPClient(8 * time.Second), // imágenes lentas no valen la pena
 	}
 }
 
@@ -109,7 +107,7 @@ func (a *ImageTransparencyAnalyzer) downloadAndDecodeImage(imageURL string) (ima
 	}
 
 	// Descargar imagen
-	resp, err := a.client.Get(imageURL)
+	resp, err := safeGet(a.client, imageURL)
 	if err != nil {
 		log.Printf("Download failed for image analysis: %v", err)
 		return nil, "", fmt.Errorf("error downloading image: %v", err)
@@ -122,9 +120,16 @@ func (a *ImageTransparencyAnalyzer) downloadAndDecodeImage(imageURL string) (ima
 	}
 
 	// Leer contenido completo
-	data, err := io.ReadAll(resp.Body)
+	data, err := readLimited(resp.Body, maxImageDownloadBytes)
 	if err != nil {
 		return nil, "", fmt.Errorf("error reading image data: %v", err)
+	}
+
+	// Reject absurd dimensions before decoding (decompression bomb)
+	if cfg, _, cfgErr := image.DecodeConfig(bytes.NewReader(data)); cfgErr == nil {
+		if int64(cfg.Width)*int64(cfg.Height) > maxImagePixels {
+			return nil, "", fmt.Errorf("image too large: %dx%d", cfg.Width, cfg.Height)
+		}
 	}
 
 	// Detectar formato por Content-Type y URL
