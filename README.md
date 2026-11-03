@@ -23,6 +23,7 @@
 | **Warranty text** | Standardizes free-form warranty descriptions into one consistent format. |
 | **Nightly enrichment** | Choose the taxonomies to cover; each night (02:00 UTC-6) new matching products are enriched and queued. |
 | **Approval queue** | Pending / approved / rejected, reviewer edits, one pending item per product, who decided what, e-mail and in-app notifications. |
+| **Market radar** | A network map of the competitors and channels around a catalog, with a sourced snapshot for Argentina 2026 (Mercado Libre, Temu, Amazon, Frávega…). Every figure carries its source, period and a trust rating. See [docs/MARKET.md](docs/MARKET.md). |
 | **Cache and dedupe** | Results are cached for one hour; identical simultaneous requests share a single run. |
 
 ![Live demo](docs/img/demo.png)

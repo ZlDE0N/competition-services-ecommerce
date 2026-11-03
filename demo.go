@@ -226,6 +226,7 @@ func (p *demoProduct) enriched() map[string]interface{} {
 }
 
 func demoRegister(router *gin.Engine) {
+	marketRegister(router)
 	g := router.Group("/demo")
 	g.Use(func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4096)

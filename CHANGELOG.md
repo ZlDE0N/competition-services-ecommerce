@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Market radar: interactive competition network and a sourced Argentina 2026 snapshot (`GET /demo/market`), with tests that require a source, period and quality rating for every figure. See `docs/MARKET.md`.
+
 ## 0.1.0 — 2026-11-02
 
 First release of this repository.

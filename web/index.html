@@ -46,6 +46,7 @@
         <a href="#how">How it works</a>
         <a href="#capabilities">Capabilities</a>
         <a href="#demo">Live demo</a>
+        <a href="#market">Market radar</a>
         <a href="#connect">Connect</a>
         <a href="#security">Security</a>
       </nav>
@@ -191,6 +192,37 @@
         <div class="payload reveal" id="payload-wrap" hidden>
           <header><h3>What your connector receives</h3><span class="muted">Approved item, as returned by <code>GET /enrichment-queue?status=approved</code></span></header>
           <pre><code id="payload"></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="market">
+      <div class="wrap">
+        <header class="sec__h reveal"><p class="eyebrow">Market radar</p><h2>Know who your catalog competes with</h2>
+          <p class="lead">A map of the competitive landscape around a catalog, with a researched snapshot for <strong>Argentina, 2026</strong>. Every figure shows its source, the period it describes and how far to trust it. Click a node for the evidence and a suggested response.</p></header>
+
+        <div class="mkt reveal" id="market-app">
+          <p class="mkt__caveat" id="mkt-caveat" role="note"></p>
+          <dl class="mkt__totals" id="mkt-totals"></dl>
+          <div class="mkt__bar">
+            <div class="seg" role="group" aria-label="Filter by type" id="mkt-filter">
+              <button type="button" data-kind="all" aria-pressed="true">All</button>
+              <button type="button" data-kind="marketplace" aria-pressed="false">Marketplaces</button>
+              <button type="button" data-kind="cross-border" aria-pressed="false">Cross-border</button>
+              <button type="button" data-kind="retailer" aria-pressed="false">Retailers</button>
+              <button type="button" data-kind="platform" aria-pressed="false">Platforms</button>
+            </div>
+            <ul class="legend" aria-label="Legend"><li><i class="dot dot--high"></i>High threat</li><li><i class="dot dot--medium"></i>Medium</li><li><i class="dot dot--low"></i>Low / enabler</li></ul>
+          </div>
+          <div class="mkt__grid">
+            <div class="net" id="net" role="group" aria-label="Competition network">
+              <svg class="net__lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false" id="net-lines"></svg>
+              <div class="net__core"><svg class="ic"><use href="#i-layers"/></svg><b>Your catalog</b><small>Argentina</small></div>
+            </div>
+            <aside class="mkt__detail" id="mkt-detail" aria-live="polite">
+              <p class="muted">Select a node to see the evidence.</p>
+            </aside>
+          </div>
         </div>
       </div>
     </section>
