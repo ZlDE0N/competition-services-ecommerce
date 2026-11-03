@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- Claude API calls: a non-retryable error (400, 401, …) used to be retried and then surfaced as `read on closed response body`, hiding the API's own message. All calls now go through one client (`claude_client.go`) that retries only network errors, 429, 5xx and 529, honours `Retry-After`, reuses one HTTP client and keeps the API's message. The obsolete prompt-caching beta header was dropped. Four more call sites with the same pattern were migrated.
+
 ### Added
 - Market radar: interactive competition network and a sourced Argentina 2026 snapshot (`GET /demo/market`), with tests that require a source, period and quality rating for every figure. See `docs/MARKET.md`.
 

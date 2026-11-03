@@ -1,10 +1,9 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -94,46 +93,15 @@ Reglas estrictas:
 		return "", fmt.Errorf("error marshaling request: %v", err)
 	}
 
-	var resp *http.Response
-	var lastErr error
-
-	for attempt := 0; attempt < 3; attempt++ {
-		client := &http.Client{Timeout: 30 * time.Second}
-		httpReq, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(requestBody))
-		if err != nil {
-			return "", fmt.Errorf("error creating request: %v", err)
-		}
-
-		httpReq.Header.Set("Content-Type", "application/json")
-		httpReq.Header.Set("x-api-key", apiKey)
-		httpReq.Header.Set("anthropic-version", "2023-06-01")
-
-		resp, err = client.Do(httpReq)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		if resp.StatusCode == 200 {
-			break
-		}
-
-		errBody, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		lastErr = fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(errBody))
-	}
-
-	if resp == nil {
-		return "", fmt.Errorf("all retry attempts failed: %v", lastErr)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return "", lastErr
+	callCtx, cancelCall := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelCall()
+	respBody, err := postClaude(callCtx, requestBody)
+	if err != nil {
+		return "", err
 	}
 
 	var claudeResponse ClaudeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&claudeResponse); err != nil {
+	if err := json.Unmarshal(respBody, &claudeResponse); err != nil {
 		return "", fmt.Errorf("error decoding response: %v", err)
 	}
 

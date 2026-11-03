@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -908,11 +907,6 @@ func improveProductName(originalName string, keywords []string) string {
 //
 // ═══════════════════════════════════════════════════════════════════════════════
 func callClaudeWithCache(systemPrompt, userMessage string, maxTokens int) (*ClaudeResponse, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY not configured")
-	}
-
 	request := CachedClaudeRequest{
 		Model: "claude-haiku-4-5-20251001",
 		System: []SystemContentBlock{
@@ -938,53 +932,9 @@ func callClaudeWithCache(systemPrompt, userMessage string, maxTokens int) (*Clau
 		return nil, fmt.Errorf("error marshaling cached request: %v", err)
 	}
 
-	// Reintentos con backoff
-	var resp *http.Response
-	var lastErr error
-
-	for attempt := 0; attempt < 3; attempt++ {
-		client := &http.Client{Timeout: 30 * time.Second}
-		req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(requestBody))
-		if err != nil {
-			return nil, fmt.Errorf("error creating request: %v", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("x-api-key", apiKey)
-		req.Header.Set("anthropic-version", "2023-06-01")
-		// ⚡ Header requerido para activar prompt caching
-		req.Header.Set("anthropic-beta", "prompt-caching-2024-07-31")
-
-		resp, err = client.Do(req)
-		if err != nil {
-			lastErr = err
-			time.Sleep(time.Duration(attempt+1) * time.Second)
-			continue
-		}
-
-		if resp.StatusCode == 200 {
-			break
-		}
-
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		lastErr = fmt.Errorf("API status %d: %s", resp.StatusCode, string(body))
-
-		if resp.StatusCode == 529 || resp.StatusCode == 429 {
-			time.Sleep(time.Duration(attempt+1) * 2 * time.Second)
-			continue
-		}
-		break
-	}
-
-	if resp == nil {
-		return nil, fmt.Errorf("all attempts failed: %v", lastErr)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := postClaude(context.Background(), requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		return nil, err
 	}
 
 	var claudeResp ClaudeResponse
@@ -1156,48 +1106,15 @@ Only the clean, improved name.`, originalName)
 		return "", fmt.Errorf("error marshaling request: %v", err)
 	}
 
-	// Realizar petición con reintentos
-	var resp *http.Response
-	var lastErr error
-
-	for attempt := 0; attempt < 3; attempt++ {
-		client := &http.Client{Timeout: 15 * time.Second}
-		req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(requestBody))
-		if err != nil {
-			return "", fmt.Errorf("error creating request: %v", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("x-api-key", apiKey)
-		req.Header.Set("anthropic-version", "2023-06-01")
-
-		resp, err = client.Do(req)
-		if err != nil {
-			lastErr = err
-			time.Sleep(time.Duration(attempt+1) * time.Second)
-			continue
-		}
-
-		if resp.StatusCode == 200 {
-			break
-		}
-
-		resp.Body.Close()
-		lastErr = fmt.Errorf("API request failed with status %d", resp.StatusCode)
-		time.Sleep(time.Duration(attempt+1) * time.Second)
-	}
-
-	if resp == nil {
-		return "", fmt.Errorf("all retry attempts failed: %v", lastErr)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	callCtx, cancelCall := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancelCall()
+	respBody, err := postClaude(callCtx, requestBody)
+	if err != nil {
+		return "", err
 	}
 
 	var claudeResponse ClaudeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&claudeResponse); err != nil {
+	if err := json.Unmarshal(respBody, &claudeResponse); err != nil {
 		return "", fmt.Errorf("error decoding response: %v", err)
 	}
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -111,46 +112,15 @@ Respond ONLY with this JSON:
 		return nil, fmt.Errorf("error marshaling request: %v", err)
 	}
 
-	// Realizar petición con reintentos
-	var resp *http.Response
-	var lastErr error
-
-	for attempt := 0; attempt < 3; attempt++ {
-		client := &http.Client{Timeout: 30 * time.Second}
-		req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(requestBody))
-		if err != nil {
-			return nil, fmt.Errorf("error creating request: %v", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("x-api-key", apiKey)
-		req.Header.Set("anthropic-version", "2023-06-01")
-
-		resp, err = client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		if resp.StatusCode == 200 {
-			break
-		}
-
-		resp.Body.Close()
-		lastErr = fmt.Errorf("API request failed with status %d", resp.StatusCode)
-	}
-
-	if resp == nil {
-		return nil, fmt.Errorf("all retry attempts failed: %v", lastErr)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	callCtx, cancelCall := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelCall()
+	respBody, err := postClaude(callCtx, requestBody)
+	if err != nil {
+		return nil, err
 	}
 
 	var claudeResponse ClaudeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&claudeResponse); err != nil {
+	if err := json.Unmarshal(respBody, &claudeResponse); err != nil {
 		return nil, fmt.Errorf("error decoding response: %v", err)
 	}
 
@@ -617,45 +587,15 @@ Respond ONLY with this JSON:
 		return nil, fmt.Errorf("error marshaling request: %v", err)
 	}
 
-	var resp *http.Response
-	var lastErr error
-
-	for attempt := 0; attempt < 3; attempt++ {
-		client := &http.Client{Timeout: 30 * time.Second}
-		req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(requestBody))
-		if err != nil {
-			return nil, fmt.Errorf("error creating request: %v", err)
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("x-api-key", apiKey)
-		req.Header.Set("anthropic-version", "2023-06-01")
-
-		resp, err = client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-
-		if resp.StatusCode == 200 {
-			break
-		}
-
-		resp.Body.Close()
-		lastErr = fmt.Errorf("API request failed with status %d", resp.StatusCode)
-	}
-
-	if resp == nil {
-		return nil, fmt.Errorf("all retry attempts failed: %v", lastErr)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	callCtx, cancelCall := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancelCall()
+	respBody, err := postClaude(callCtx, requestBody)
+	if err != nil {
+		return nil, err
 	}
 
 	var claudeResponse ClaudeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&claudeResponse); err != nil {
+	if err := json.Unmarshal(respBody, &claudeResponse); err != nil {
 		return nil, fmt.Errorf("error decoding response: %v", err)
 	}
 
