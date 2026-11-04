@@ -74,7 +74,7 @@
         links.forEach(function (a) { a.classList.toggle('is-on', a.getAttribute('href') === '#' + en.target.id); });
       });
     }, { rootMargin: '-45% 0px -50% 0px' });
-    ['how', 'capabilities', 'demo', 'connect', 'security'].forEach(function (id) { var s = document.getElementById(id); if (s) spy.observe(s); });
+    ['how', 'capabilities', 'demo', 'market', 'connect', 'security'].forEach(function (id) { var s = document.getElementById(id); if (s) spy.observe(s); });
   }
 
   /* ── Hero numbers ──────────────────────────────────────── */
@@ -299,6 +299,138 @@
     });
     Promise.all([loadCatalog(), loadQueue()]).catch(function () {
       $('#stage-empty').querySelector('p').textContent = 'The demo API is not reachable from here.';
+    });
+  }
+
+  /* ── Market radar ──────────────────────────────────────── */
+  var mkt = $('#market-app');
+  if (mkt) {
+    var M = { data: null, kind: 'all', sel: null };
+    var NS = 'http://www.w3.org/2000/svg';
+    var KIND = { marketplace: 'Marketplace', 'cross-border': 'Cross-border', retailer: 'Retailer', platform: 'Platform' };
+    var QLABEL = { high: 'solid data', medium: 'indicative', low: 'weak data' };
+
+    function safeLink(url, label) {
+      var a = h('a', null, label);
+      try {
+        var u = new URL(url);
+        if (u.protocol === 'https:') { a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      } catch (e) { /* not a URL: render as plain text */ }
+      return a;
+    }
+    function hostOf(url) { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return 'source'; } }
+
+    function renderTotals(d) {
+      $('#mkt-caveat').textContent = d.caveat + ' Snapshot: ' + d.asOf + '.';
+      var dl = $('#mkt-totals');
+      dl.textContent = '';
+      d.totals.forEach(function (m) {
+        var box = h('div');
+        box.appendChild(h('dt', null, m.label.indexOf(m.period) >= 0 ? m.label : m.label + ' · ' + m.period));
+        var dd = h('dd', null, m.value);
+        var small = h('small');
+        small.appendChild(safeLink(m.source, hostOf(m.source)));
+        small.appendChild(document.createTextNode(' · ' + (QLABEL[m.quality] || m.quality)));
+        dd.appendChild(small);
+        box.appendChild(dd);
+        dl.appendChild(box);
+      });
+    }
+
+    function place(i, n) {
+      var a = (-90 + (360 / n) * i) * Math.PI / 180;
+      return { x: 50 + 38 * Math.cos(a), y: 50 + 36 * Math.sin(a) };
+    }
+
+    function renderNet() {
+      var net = $('#net'), lines = $('#net-lines');
+      $$('.node', net).forEach(function (n) { n.remove(); });
+      lines.textContent = '';
+      var ps = M.data.players;
+      ps.forEach(function (p, i) {
+        var pos = place(i, ps.length);
+        var dim = M.kind !== 'all' && p.kind !== M.kind;
+        var ln = document.createElementNS(NS, 'line');
+        ln.setAttribute('x1', '50'); ln.setAttribute('y1', '50');
+        ln.setAttribute('x2', pos.x.toFixed(1)); ln.setAttribute('y2', pos.y.toFixed(1));
+        ln.setAttribute('data-threat', p.threat);
+        ln.setAttribute('data-id', p.id);
+        if (dim) ln.setAttribute('data-dim', '');
+        lines.appendChild(ln);
+
+        var b = h('button', 'node');
+        b.type = 'button';
+        b.style.left = pos.x.toFixed(1) + '%';
+        b.style.top = pos.y.toFixed(1) + '%';
+        b.setAttribute('aria-pressed', String(M.sel === p.id));
+        b.setAttribute('data-id', p.id);
+        if (dim) b.setAttribute('data-dim', '');
+        var t = h('b');
+        var dot = h('i', 'dot dot--' + p.threat);
+        dot.setAttribute('aria-hidden', 'true');
+        t.appendChild(dot);
+        t.appendChild(document.createTextNode(p.name));
+        b.appendChild(t);
+        b.appendChild(h('small', null, (KIND[p.kind] || p.kind) + ' · ' + p.threat + ' threat'));
+        b.addEventListener('click', function () { M.sel = p.id; renderNet(); renderDetail(); });
+        net.appendChild(b);
+      });
+      var sel = $('line[data-id="' + (M.sel || '') + '"]', lines);
+      if (sel) sel.setAttribute('data-on', '');
+    }
+
+    function renderDetail() {
+      var box = $('#mkt-detail');
+      var p = M.data.players.filter(function (x) { return x.id === M.sel; })[0];
+      box.textContent = '';
+      if (!p) { box.appendChild(h('p', 'muted', 'Select a node to see the evidence.')); return; }
+      var title = h('h3', null, p.name);
+      var tag = h('span', 'tag-threat', p.threat + ' threat');
+      tag.setAttribute('data-threat', p.threat);
+      title.appendChild(tag);
+      box.appendChild(title);
+      box.appendChild(h('p', null, p.summary));
+      box.appendChild(h('h4', null, 'Evidence'));
+      var ul = h('ul', 'evid');
+      p.metrics.forEach(function (m) {
+        var li = h('li');
+        var left = h('span');
+        left.appendChild(document.createTextNode(m.label + ': '));
+        left.appendChild(h('b', null, m.value));
+        li.appendChild(left);
+        var q = h('span', 'q', QLABEL[m.quality] || m.quality);
+        q.setAttribute('data-q', m.quality);
+        li.appendChild(q);
+        var small = h('small');
+        small.appendChild(document.createTextNode(m.period + ' · '));
+        small.appendChild(safeLink(m.source, hostOf(m.source)));
+        if (m.note) small.appendChild(document.createTextNode(' · ' + m.note.replace(/https?:\/\/\S+/g, '').trim()));
+        li.appendChild(small);
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+      box.appendChild(h('h4', null, 'Suggested response'));
+      box.appendChild(h('p', 'mkt__play', p.playbook));
+    }
+
+    $$('#mkt-filter button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        M.kind = b.getAttribute('data-kind');
+        $$('#mkt-filter button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        if (M.sel) {
+          var cur = M.data.players.filter(function (x) { return x.id === M.sel; })[0];
+          if (cur && M.kind !== 'all' && cur.kind !== M.kind) { M.sel = null; renderDetail(); }
+        }
+        renderNet();
+      });
+    });
+
+    api('/demo/market?country=ar').then(function (d) {
+      M.data = d;
+      renderTotals(d);
+      renderNet();
+    }).catch(function () {
+      $('#mkt-caveat').textContent = 'The market snapshot is not reachable from here.';
     });
   }
 

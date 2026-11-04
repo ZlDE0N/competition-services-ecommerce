@@ -46,6 +46,7 @@
         <a href="#how">How it works</a>
         <a href="#capabilities">Capabilities</a>
         <a href="#demo">Live demo</a>
+        <a href="#market">Market radar</a>
         <a href="#connect">Connect</a>
         <a href="#security">Security</a>
       </nav>
@@ -117,7 +118,7 @@
         <header class="sec__h reveal"><p class="eyebrow">How it works</p><h2>From a bare SKU to an approved record in five moves</h2><p class="lead">Every step is visible and every output is reviewable. The same pipeline runs when someone clicks a button and when the nightly job runs on its own.</p></header>
         <ol class="steps">
           <li class="step reveal"><span class="step__n">1</span><svg class="ic"><use href="#i-db"/></svg><h3>Collect</h3><p>Loads the product, its category, brand, barcodes and any datasheet links already on file.</p></li>
-          <li class="step reveal"><span class="step__n">2</span><svg class="ic"><use href="#i-search"/></svg><h3>Research</h3><p>Searches the web, looks up barcodes, and reads PDF and Word datasheets with an AI model.</p></li>
+          <li class="step reveal"><span class="step__n">2</span><svg class="ic"><use href="#i-search"/></svg><h3>Research</h3><p>Searches the web, looks up barcodes, and reads PDF and Word datasheets (scanned PDFs go to Claude).</p></li>
           <li class="step reveal"><span class="step__n">3</span><svg class="ic"><use href="#i-spark"/></svg><h3>Write</h3><p>Generates the name, bullets, long description, specs, tags and SEO text using the prompt rules of that category.</p></li>
           <li class="step reveal"><span class="step__n">4</span><svg class="ic"><use href="#i-shield"/></svg><h3>Check</h3><p>Keeps the brand only if the original named it, normalizes units and grammar, and removes unsafe markup.</p></li>
           <li class="step reveal"><span class="step__n">5</span><svg class="ic"><use href="#i-queue"/></svg><h3>Approve</h3><p>Lands in a queue where an approver edits, accepts or rejects, with the audit trail kept.</p></li>
@@ -145,7 +146,7 @@
     <section class="sec" id="demo">
       <div class="wrap">
         <header class="sec__h reveal"><p class="eyebrow">Live demo</p><h2>Try it on a sample catalog</h2>
-          <p class="lead">Pick a product, run the enrichment and watch each stage. <strong>Demo mode uses hand-written sample data</strong>: no AI model, search or database is contacted. The response shapes are the same as the real API.</p></header>
+          <p class="lead">Pick a product, run the enrichment and watch each stage. <strong>Demo mode uses hand-written sample data</strong>: no Claude call, search or database is contacted. The response shapes are the same as the real API.</p></header>
 
         <div class="demo reveal" id="demo-app">
           <aside class="demo__col" aria-label="Sample catalog">
@@ -195,6 +196,37 @@
       </div>
     </section>
 
+    <section class="sec" id="market">
+      <div class="wrap">
+        <header class="sec__h reveal"><p class="eyebrow">Market radar</p><h2>Know who your catalog competes with</h2>
+          <p class="lead">A map of the competitive landscape around a catalog, with a researched snapshot for <strong>Argentina, 2026</strong>. Every figure shows its source, the period it describes and how far to trust it. Click a node for the evidence and a suggested response.</p></header>
+
+        <div class="mkt reveal" id="market-app">
+          <p class="mkt__caveat" id="mkt-caveat" role="note"></p>
+          <dl class="mkt__totals" id="mkt-totals"></dl>
+          <div class="mkt__bar">
+            <div class="seg" role="group" aria-label="Filter by type" id="mkt-filter">
+              <button type="button" data-kind="all" aria-pressed="true">All</button>
+              <button type="button" data-kind="marketplace" aria-pressed="false">Marketplaces</button>
+              <button type="button" data-kind="cross-border" aria-pressed="false">Cross-border</button>
+              <button type="button" data-kind="retailer" aria-pressed="false">Retailers</button>
+              <button type="button" data-kind="platform" aria-pressed="false">Platforms</button>
+            </div>
+            <ul class="legend" aria-label="Legend"><li><i class="dot dot--high"></i>High threat</li><li><i class="dot dot--medium"></i>Medium</li><li><i class="dot dot--low"></i>Low / enabler</li></ul>
+          </div>
+          <div class="mkt__grid">
+            <div class="net" id="net" role="group" aria-label="Competition network">
+              <svg class="net__lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false" id="net-lines"></svg>
+              <div class="net__core"><svg class="ic"><use href="#i-layers"/></svg><b>Your catalog</b><small>Argentina</small></div>
+            </div>
+            <aside class="mkt__detail" id="mkt-detail" aria-live="polite">
+              <p class="muted">Select a node to see the evidence.</p>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="sec sec--alt" id="connect">
       <div class="wrap">
         <header class="sec__h reveal"><p class="eyebrow">Connect</p><h2>One engine, any CRM or storefront, through external modules</h2>
@@ -203,12 +235,12 @@
         <figure class="arch reveal" aria-label="Architecture diagram">
           <svg viewBox="0 0 960 330" role="img" aria-labelledby="arch-t arch-d">
             <title id="arch-t">How the engine connects</title>
-            <desc id="arch-d">Your CRM or e-commerce talks to a connector module, which calls the enrichment engine over REST. The engine uses an AI model, web search, object storage, a database and a cache.</desc>
+            <desc id="arch-d">Your CRM or e-commerce talks to a connector module, which calls the enrichment engine over REST. The engine uses the Claude API, web search, object storage, a database and a cache.</desc>
             <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="arch__ah"/></marker></defs>
             <g class="arch__node"><rect x="20" y="115" width="190" height="100" rx="16"/><text x="115" y="158" class="arch__t">Your CRM</text><text x="115" y="182" class="arch__s">or e-commerce / ERP</text></g>
             <g class="arch__node arch__node--mod"><rect x="290" y="115" width="190" height="100" rx="16"/><text x="385" y="158" class="arch__t">Connector module</text><text x="385" y="182" class="arch__s">your code · pull / push</text></g>
             <g class="arch__node arch__node--core"><rect x="560" y="95" width="180" height="140" rx="18"/><text x="650" y="150" class="arch__t">Enrichment</text><text x="650" y="174" class="arch__t">engine</text><text x="650" y="200" class="arch__s">REST · approval queue</text></g>
-            <g class="arch__node arch__node--sm"><rect x="800" y="20" width="140" height="52" rx="12"/><text x="870" y="52" class="arch__s2">AI model</text></g>
+            <g class="arch__node arch__node--sm"><rect x="800" y="20" width="140" height="52" rx="12"/><text x="870" y="52" class="arch__s2">Claude API</text></g>
             <g class="arch__node arch__node--sm"><rect x="800" y="86" width="140" height="52" rx="12"/><text x="870" y="118" class="arch__s2">Web search</text></g>
             <g class="arch__node arch__node--sm"><rect x="800" y="152" width="140" height="52" rx="12"/><text x="870" y="184" class="arch__s2">Object storage</text></g>
             <g class="arch__node arch__node--sm"><rect x="800" y="218" width="140" height="52" rx="12"/><text x="870" y="250" class="arch__s2">SQL database</text></g>
@@ -298,7 +330,7 @@ async function updateProductInYourSystem(id, fields) { /* ... */ }</code></pre>
   <footer class="foot">
     <div class="wrap foot__in">
       <div><strong>Competition Services · E-commerce</strong><p class="muted">Catalog enrichment engine. Go · Gin · SQL Server · Redis.</p></div>
-      <p class="fine">Independent project, not affiliated with, endorsed by or sponsored by Anthropic. It can use the Claude API for text and vision; Claude is a trademark of Anthropic, PBC. Demo content is fictional.</p>
+      <p class="fine">Independent project, not affiliated with, endorsed by or sponsored by Anthropic. It uses the Claude API for text generation and document reading; Claude is a trademark of Anthropic, PBC. Demo content is fictional.</p>
     </div>
   </footer>
 </body>
